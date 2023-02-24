@@ -3,16 +3,9 @@ use crate::lexer::TokenType::*;
 
 use std::collections::HashMap;
 
-pub enum DataType {
-	Int8,
-	Int16,
-	Int32,
-	Int64
-}
-
 pub enum AstType {
 	/* function name, optional hashmap of paramaters (key being the identifier, value being the datatype) */
-	FunctionDefinition(String, Option<HashMap<String, DataType>>)
+	FunctionDefinition(String, Option<HashMap<String, String>>)
 }
 
 pub fn ast(input: &Vec<TokenType>) -> Result<Vec<AstType>, String> {

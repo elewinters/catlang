@@ -4,6 +4,7 @@ mod lexer;
 mod ast;
 
 fn main() {
+	/* get command line options */
 	let options = match options::get_options() {
 		Ok(x) => x,
 		Err(err) => {
@@ -15,18 +16,20 @@ fn main() {
 		println!("{:?}", options);
 	}
 
-	/* lex now owns options.input */
+	/* lex input string into tokens */
 	let tokens = lexer::lex(options.input);
 	if (options.verbose) {
 		lexer::print_tokens(&tokens);
 	}
 
-	/* generate AST */
-	let ast = match ast::ast(&tokens) {
+	/* generate AST from tokens */
+	let _ast = match ast::ast(&tokens) {
 		Ok(x) => x,
 		Err(err) => {
 			println!("catlang: \x1b[31mparser error:\x1b[0m {}", err);
 			std::process::exit(1);
 		}
 	};
+
+	/* parse AST and generate the assembly code */
 }
