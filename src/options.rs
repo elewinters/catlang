@@ -39,9 +39,8 @@ pub fn get_options() -> Result<Options, String> {
 		verbose: false		
 	};
 
-	for i in 0..args.len() {
-		if (i == 0) {continue;}
-
+	let mut i = 1;
+	while i < args.len() {
 		if (args[i] == "-h" || args[i] == "--help") {
 			print_help();
 		}
@@ -60,15 +59,17 @@ pub fn get_options() -> Result<Options, String> {
 			}
 			
 			options.output_name = Some(args[i+1].clone());
+
+			i += 1;
 		}
 		else if (!args[i].starts_with('-')) {
 			if (!options.input.is_empty()) {
-				return Err(String::from("can only have one input file"));
+				return Err(String::from("more than one input file"));
 			}
 			
-			let input: Vec<u8> = match(fs::read(&args[1])) {
+			let input: Vec<u8> = match(fs::read(&args[i])) {
 				Ok(x) => x,
-				Err(_) => return Err(format!("input file '{}' cannot be read", args[1]))
+				Err(_) => return Err(format!("input file '{}' cannot be read", args[i]))
 			};
 
 			if (!input.is_ascii()) {
@@ -80,6 +81,8 @@ pub fn get_options() -> Result<Options, String> {
 		else {
 			return Err(format!("invalid option '{}'", args[i]));
 		}
+
+		i += 1;
 	}
 
 	if (options.link_libc && !options.create_binary) {
