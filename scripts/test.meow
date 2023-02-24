@@ -1,0 +1,12 @@
+extern fn puts(str: any*);
+extern fn printf(fmt: any*, num: int);
+extern fn strcpy(str: any*, str2: any*);
+extern fn scanf(fmt: any*, buf: any*);
+
+fn main() {
+	let string: any* = "Hello, world!";
+	puts(string);
+
+	printf("%d\n", 10);
+	asm!("mov rax, 0");
+}
