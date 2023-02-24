@@ -5,4 +5,4 @@ build:
 	cargo build
 	install target/debug/$(NAME) $(OUT_DIR)/$(NAME) 
 run: build
-	$(NAME) scripts/test.meow
+	$(NAME) scripts/test.meow -V

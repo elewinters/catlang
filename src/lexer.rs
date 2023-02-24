@@ -1,3 +1,4 @@
+#[derive(Debug)]
 pub enum TokenType {
 	Keyword(String),
 	Identifier(String),
@@ -6,6 +7,20 @@ pub enum TokenType {
 	IntLiteral(String),
 
 	Operator(char),
+}
+
+impl TokenType {
+	pub fn human_readable(&self) -> String {
+		match &self {
+			TokenType::Keyword(x) => format!("keyword '{x}'"),
+			TokenType::Identifier(x) => format!("identifier '{x}'"),
+
+			TokenType::StringLiteral(x) => format!("string literal '{x}'"),
+			TokenType::IntLiteral(x) => format!("int literal '{x}'"),
+
+			TokenType::Operator(x) => format!("operator '{x}'"),
+		}
+	}
 }
 
 const KEYWORDS: [&str; 3] = [
