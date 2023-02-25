@@ -7,6 +7,7 @@ pub enum TokenType {
 	IntLiteral(String),
 
 	Operator(char),
+	Newline
 }
 
 impl TokenType {
@@ -19,6 +20,7 @@ impl TokenType {
 			TokenType::IntLiteral(x) => format!("int literal '{x}'"),
 
 			TokenType::Operator(x) => format!("operator '{x}'"),
+			TokenType::Newline => format!("'newline'")
 		}
 	}
 }
@@ -48,14 +50,9 @@ pub fn print_tokens(input: &Vec<TokenType>) {
 			TokenType::StringLiteral(x) => print!("StringLiteral[\"{}\"], ", x),
 			TokenType::IntLiteral(x) => print!("IntLiteral[{}], ", x),
 
-			TokenType::Operator(x) => {
-				print!("Operator[{}], ", x);
-				
-				match (*x) {
-					';' | '{' | '}' => println!(),
-					_ => ()
-				}
-			}
+			TokenType::Operator(x) => print!("Operator[{}], ", x),
+
+			TokenType::Newline => println!("Newline")
 		}
 	}
 }
@@ -66,6 +63,10 @@ pub fn lex(input: Vec<u8>) -> Vec<TokenType> {
 	
 	while let Some(v) = iter.next() {
 		let v = *v as char;
+
+		if (v == '\n') {
+			tokens.push(TokenType::Newline);
+		}
 		
 		if (v.is_whitespace()) {
 			continue;
@@ -88,6 +89,9 @@ pub fn lex(input: Vec<u8>) -> Vec<TokenType> {
 			}
 
 			if ((*c as char).is_whitespace() && !is_string) {
+				if (*c as char) == '\n' {
+					escaped = '\n';
+				}
 				break;
 			}
 			if (ESCAPE_CHARACTERS.contains(&(*c as char)) && !is_string) {
@@ -115,6 +119,11 @@ pub fn lex(input: Vec<u8>) -> Vec<TokenType> {
 		else if (v == '"') {
 			identifier.remove(0);
 			tokens.push(TokenType::StringLiteral(identifier));
+		}
+
+		if (escaped == '\n') {
+			tokens.push(TokenType::Newline);
+			continue;
 		}
 		
 		if (!escaped.is_whitespace() && escaped != '\0') {

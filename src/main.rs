@@ -23,13 +23,14 @@ fn main() {
 	}
 
 	/* generate AST from tokens */
-	let _ast = match ast::ast(&tokens) {
+	let ast = match ast::ast(&tokens) {
 		Ok(x) => x,
-		Err(err) => {
-			println!("catlang: \x1b[31mparser error:\x1b[0m {}", err);
+		Err((err, line)) => {
+			println!("catlang: \x1b[31mparser error:\x1b[0m [line {line}] {}", err);
 			std::process::exit(1);
 		}
 	};
+	println!("\n\n{:?}", &ast);
 
 	/* parse AST and generate the assembly code */
 }
