@@ -9,7 +9,5 @@ fn _start() {
 	asm!("mov rdi, 0");
 	asm!("syscall");
 
-	asm!(10);
-
 	syscall!(1, 1, "Hello, world!", 14);
 }

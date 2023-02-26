@@ -16,15 +16,13 @@ pub fn parse(input: &[AstType]) -> Result<String, (String, i64)> {
 			FunctionDefinition(name, _) => {
 				textsect.push_str(&format!("global {name}\n{name}:\n"));
 			},
-			BuiltinMacroCall(name, args) => {
-				if (*name == "asm!") {
-					let instruction = match args[0] {
-						StringLiteral(ref x) => x,
-						err => return Err((format!("expected token type to be a string literal, not {}", token_to_string(err)), line))
-					};
+			BuiltinMacroCall("asm!", args) => {
+				let instruction = match args[0] {
+					StringLiteral(ref x) => x,
+					err => return Err((format!("expected token type to be a string literal, not {}", token_to_string(err)), line))
+				};
 
-					textsect.push_str(&format!("\t{}\n", instruction));
-				}
+				textsect.push_str(&format!("\t{}\n", instruction));
 			}
 			_ => ()
 		}

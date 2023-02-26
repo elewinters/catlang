@@ -6,11 +6,11 @@ use std::collections::HashMap;
 #[derive(Debug)]
 pub enum AstType<'a> {
 	/* function name, optional hashmap of paramaters (key being the identifier, value being the datatype) */
-	FunctionDefinition(String, Option<HashMap<String, String>>),
+	FunctionDefinition(&'a str, Option<HashMap<String, String>>),
 	/* variable name, type, and initializer value */
-	VariableDefinition(String, String, String),
+	VariableDefinition(&'a str, &'a str, &'a str),
 	/* macro name, arguments */
-	BuiltinMacroCall(String, Vec<&'a TokenType>),
+	BuiltinMacroCall(&'a str, Vec<&'a TokenType>),
 	/* for counting the line number in parser.rs */
 	Newline
 }
@@ -34,7 +34,7 @@ pub fn ast(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 					_ => return Err(("expected identifier after function keyword".to_owned(), line))
 				};
 
-				ast.push(AstType::FunctionDefinition(function_name.to_owned(), None));
+				ast.push(AstType::FunctionDefinition(function_name, None));
 			},
 			/* variable declerations */
 			Keyword(keyword) if keyword == "let" => {
@@ -70,7 +70,7 @@ pub fn ast(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 				};
 
 				/* push everything to the AST */
-				ast.push(AstType::VariableDefinition(variable_name.to_owned(), variable_type.to_owned(), intializer_value.to_owned()));
+				ast.push(AstType::VariableDefinition(variable_name, variable_type, intializer_value));
 			}
 			/* builtin macro calls */
 			Identifier(identifier) if identifier.ends_with('!') => {
@@ -97,7 +97,7 @@ pub fn ast(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 					}
 				}
 
-				ast.push(AstType::BuiltinMacroCall(identifier.to_owned(), arguments));
+				ast.push(AstType::BuiltinMacroCall(identifier, arguments));
 			}
 			_ => (),
 		}
