@@ -37,7 +37,13 @@ fn main() {
 	println!("\n\n{:?}", &ast);
 
 	/* parse AST and generate the assembly code */
-	let assembly_output = parser::parse(&ast);
+	let assembly_output = match parser::parse(&ast) {
+		Ok(x) => x,
+		Err((err, line)) => {
+			println!("catlang: \x1b[31mparser error:\x1b[0m [line {line}] {}", err);
+			std::process::exit(1);
+		}
+	};
 
 	if (!options.create_binary) {
 		let result = match (options.output_name) {

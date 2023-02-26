@@ -1,4 +1,4 @@
-use crate::lexer::TokenType;
+use crate::lexer::{TokenType, token_to_string};
 use crate::lexer::TokenType::*;
 
 use std::collections::HashMap;
@@ -10,7 +10,9 @@ pub enum AstType<'a> {
 	/* variable name, type, and initializer value */
 	VariableDefinition(String, String, String),
 	/* macro name, arguments */
-	BuiltinMacroCall(String, Vec<&'a TokenType>)
+	BuiltinMacroCall(String, Vec<&'a TokenType>),
+	/* for counting the line number in parser.rs */
+	Newline
 }
 
 pub fn ast(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
@@ -21,7 +23,10 @@ pub fn ast(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 	while let Some(i) = iter.next() {
 		match i {
 			/* increment line number on newline token */
-			Newline => line += 1,
+			Newline => {
+				line += 1;
+				ast.push(AstType::Newline);
+			},
 			/* function definitions */
 			Keyword(keyword) if keyword == "fn" => {
 				let function_name = match iter.next() {
@@ -88,7 +93,7 @@ pub fn ast(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 					match (token) {
 						StringLiteral(_) | IntLiteral(_) | Identifier(_) => arguments.push(token),
 						Operator(',') => (),
-						err => return Err((format!("unexpected {} in macro call to {identifier}", err.human_readable()), line))
+						err => return Err((format!("unexpected {} in macro call to {identifier}", token_to_string(err)), line))
 					}
 				}
 
