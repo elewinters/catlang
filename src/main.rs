@@ -8,7 +8,9 @@ mod ast;
 mod parser;
 
 fn main() {
-	/* get command line options */
+	/* ---------------------------- */
+	/*   get command line options   */
+	/* ---------------------------- */
 	let options = match options::get_options() {
 		Ok(x) => x,
 		Err(err) => {
@@ -20,13 +22,17 @@ fn main() {
 		println!("{:?}", options);
 	}
 
-	/* lex input string into tokens */
+	/* --------------------------- */
+	/*    lex input into tokens    */
+	/* --------------------------- */
 	let tokens = lexer::lex(options.input);
 	if (options.verbose) {
 		lexer::print_tokens(&tokens);
 	}
 
-	/* generate AST from tokens */
+	/* --------------------------- */
+	/*   generate AST from tokens  */
+	/* --------------------------- */
 	let ast = match ast::ast(&tokens) {
 		Ok(x) => x,
 		Err((err, line)) => {
@@ -36,7 +42,9 @@ fn main() {
 	};
 	println!("\n\n{:?}", &ast);
 
-	/* parse AST and generate the assembly code */
+	/* -------------------------------------------- */
+	/*  parse AST and generate the assembly output  */
+	/* -------------------------------------------- */
 	let assembly_output = match parser::parse(&ast) {
 		Ok(x) => x,
 		Err((err, line)) => {
@@ -45,6 +53,9 @@ fn main() {
 		}
 	};
 
+	/* --------------------------------- */
+	/*  write assembly output to a file  */
+	/* --------------------------------- */
 	if (!options.create_binary) {
 		let result = match (options.output_name) {
 			Some(x) => fs::write(x, &assembly_output),
@@ -56,7 +67,9 @@ fn main() {
 			std::process::exit(1);
 		}
 	}
-	/* assemble and link output to create a binary */
+	/* ------------------------------------------------------ */
+	/*  assemble and link assembly output to create a binary  */
+	/* ------------------------------------------------------ */
 	else {
 		if fs::write("/tmp/catlang_output.asm", &assembly_output).is_err() {
 			println!("catlang: \x1b[31merror:\x1b[0m failed to write assembly output to /tmp/catlang_output.asm");
