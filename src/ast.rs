@@ -4,13 +4,13 @@ use crate::lexer::TokenType::*;
 use std::collections::HashMap;
 
 #[derive(Debug)]
-pub enum AstType {
+pub enum AstType<'a> {
 	/* function name, optional hashmap of paramaters (key being the identifier, value being the datatype) */
 	FunctionDefinition(String, Option<HashMap<String, String>>),
 	/* variable name, type, and initializer value */
 	VariableDefinition(String, String, String),
 	/* macro name, arguments */
-	BuiltinMacroCall(String, String)
+	BuiltinMacroCall(String, Vec<&'a TokenType>)
 }
 
 pub fn ast(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
@@ -41,7 +41,7 @@ pub fn ast(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 
 				/* check if there's a colon after variable name */
 				match iter.next() {
-					Some(Operator(operator)) if *operator == ':' => (),
+					Some(Operator(':')) => (),
 					_ => return Err(("expected operator ':' token after the variable name".to_owned(), line))
 				};
 				
@@ -53,7 +53,7 @@ pub fn ast(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 
 				/* check if there's a = after the type name */
 				match iter.next() {
-					Some(Operator(operator)) if *operator == '=' => (),
+					Some(Operator('=')) => (),
 					_ => return Err(("expected operator '=' after type name".to_owned(), line))
 				};
 
@@ -71,22 +71,28 @@ pub fn ast(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 			Identifier(identifier) if identifier.ends_with('!') => {
 				/* check for ( */
 				match iter.next() {
-					Some(Operator(operator)) if *operator == '(' => (),
+					Some(Operator('(')) => (),
 					_ => return Err((format!("expected operator '(' after macro '{identifier}'"), line))
 				}
 
-				let argument = match iter.next() {
-					Some(StringLiteral(x)) => x,
-					_ => return Err((format!("expected string literal in argument to macro '{identifier}'"), line))
-				};
-				
-				/* check for ) */
-				match iter.next() {
-					Some(Operator(operator)) if *operator == ')' => (),
-					_ => return Err(("expected operator ')' after macro argument".to_owned(), line))
+				let mut arguments: Vec<&TokenType> = Vec::new();
+
+				#[allow(irrefutable_let_patterns)]
+				while let i = iter.next() {
+					let token = match i {
+						Some(Operator(')')) => break,
+						Some(Operator(';')) | None => return Err((format!("expected a closing ) in macro call to {identifier}"), line)),
+						Some(x) => x
+					};
+
+					match (token) {
+						StringLiteral(_) | IntLiteral(_) | Identifier(_) => arguments.push(token),
+						Operator(',') => (),
+						err => return Err((format!("unexpected {} in macro call to {identifier}", err.human_readable()), line))
+					}
 				}
 
-				ast.push(AstType::BuiltinMacroCall(identifier.to_owned(), argument.to_owned()));
+				ast.push(AstType::BuiltinMacroCall(identifier.to_owned(), arguments));
 			}
 			_ => (),
 		}

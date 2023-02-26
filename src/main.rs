@@ -1,5 +1,4 @@
 #![allow(unused_parens)]
-#![allow(dead_code)]
 use std::fs;
 use std::process::Command;
 

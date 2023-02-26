@@ -1,7 +1,3 @@
-fn sum(x: int32, y: int32) { 
-	return x + y; 
-}
-
 fn _start() {
 	asm!("mov rax, 1");
 	asm!("mov rdi, 1");
@@ -12,4 +8,8 @@ fn _start() {
 	asm!("mov rax, 60");
 	asm!("mov rdi, 0");
 	asm!("syscall");
+
+	asm!(10);
+
+	syscall!(1, 1, "Hello, world!", 14);
 }

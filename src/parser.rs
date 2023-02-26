@@ -1,5 +1,6 @@
 use crate::ast::AstType;
 use crate::ast::AstType::*;
+use crate::lexer::TokenType::*;
 
 /* returns the assembly output on success, returns a string containing error information on failure */
 pub fn parse(input: &[AstType]) -> String {
@@ -13,9 +14,14 @@ pub fn parse(input: &[AstType]) -> String {
 			FunctionDefinition(name, _) => {
 				textsect.push_str(&format!("global {name}\n{name}:\n"));
 			},
-			BuiltinMacroCall(name, arg) => {
+			BuiltinMacroCall(name, args) => {
 				if (*name == "asm!") {
-					textsect.push_str(&format!("\t{}\n", arg));
+					let instruction = match args[0] {
+						StringLiteral(ref x) => x,
+						_ => todo!("expected token type to be StringLiteral")
+					};
+
+					textsect.push_str(&format!("\t{}\n", instruction));
 				}
 			}
 			_ => ()
