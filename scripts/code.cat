@@ -1,11 +1,3 @@
 fn _start() {
-	asm!("mov rax, 1");
-	asm!("mov rdi, 1");
-	asm!("mov rsi, 65");
-	asm!("mov rdx, 1");
-	asm!("syscall");
-
-	asm!("mov rax, 60");
-	asm!("mov rdi, 0");
-	asm!("syscall");
+	syscall!(60, 1);
 }

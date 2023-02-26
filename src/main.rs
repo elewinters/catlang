@@ -113,12 +113,12 @@ fn main() {
 			.unwrap();
 		}
 
-		if fs::remove_file("{temp}/catlang_output.asm").is_err() {
-			exit!(format!("failed to delete {temp}/catlang_output.asm"))
+		if let Err(err) = fs::remove_file(format!("{temp}/catlang_output.asm")) {
+			exit!(format!("failed to delete {temp}/catlang_output.asm, {err}"))
 		}
 
-		if fs::remove_file("{temp}/catlang_output.o").is_err() {
-			exit!(format!("failed to delete {temp}/catlang_output.o"))
+		if let Err(err) = fs::remove_file(format!("{temp}/catlang_output.o")) {
+			exit!(format!("failed to delete {temp}/catlang_output.o, {err}"))
 		}
 	}
 }

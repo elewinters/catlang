@@ -39,7 +39,12 @@ pub fn parse(input: &[AstType]) -> Result<String, (String, i64)> {
 						_ => return Err((String::from("syscall! does not take more than 7 arguments"), line))
 					}
 				}
+				
+				textsect.push_str("\tsyscall\n\n");
 			}
+			BuiltinMacroCall(name, _) => {
+				return Err((format!("macro '{}' does not exist", name), line));
+			} 
 			_ => ()
 		}
 	}
