@@ -1,3 +1,4 @@
 fn _start() {
-	syscall!(60, 1);
+	syscall!(60, 
+		1);
 }

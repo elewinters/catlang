@@ -17,7 +17,6 @@ macro_rules! exit {
     }
 }
 
-
 fn main() {
 	/* ---------------------------- */
 	/*   get command line options   */

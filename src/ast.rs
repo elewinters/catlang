@@ -86,14 +86,14 @@ pub fn ast(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 				while let i = iter.next() {
 					let token = match i {
 						Some(Operator(')')) => break,
-						Some(Operator(';')) | None => return Err((format!("expected a closing ) in macro call to {identifier}"), line)),
+						Some(Operator(';')) | None => return Err((format!("expected a closing ) in call to macro {identifier}"), line)),
 						Some(x) => x
 					};
 
 					match (token) {
 						StringLiteral(_) | IntLiteral(_) | Identifier(_) => arguments.push(token),
-						Operator(',') => (),
-						err => return Err((format!("unexpected {} in macro call to {identifier}", token_to_string(err)), line))
+						Operator(',') | Newline => (),
+						err => return Err((format!("unexpected {} in call to macro {identifier}", token_to_string(err)), line))
 					}
 				}
 
