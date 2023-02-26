@@ -23,6 +23,19 @@ pub fn token_to_string(token: &TokenType) -> String {
 	}
 }
 
+pub fn token_get_value(token: &TokenType) -> String {
+	match token {
+		TokenType::Keyword(x) => x.to_owned(),
+		TokenType::Identifier(x) => x.to_owned(),
+
+		TokenType::StringLiteral(x) => x.to_owned(),
+		TokenType::IntLiteral(x) => x.to_owned(),
+
+		TokenType::Operator(x) => String::from(*x),
+		TokenType::Newline => String::from("\n")
+	}
+}
+
 const KEYWORDS: [&str; 3] = [
 	"let", 
 	"extern", 

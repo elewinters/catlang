@@ -28,7 +28,7 @@ fn print_help() {
 pub fn get_options() -> Result<Options, String> {
 	let args: Vec<String> = env::args().collect();
 	if (args.len() == 1) {
-		return Err(format!("no arguments specified, try '{}' --help' for more information", args[0]));
+		return Err(format!("no arguments specified, try '{} --help' for more information", args[0]));
 	}
 
 	let mut options = Options {

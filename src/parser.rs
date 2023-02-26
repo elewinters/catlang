@@ -1,16 +1,16 @@
 use crate::ast::AstType;
 use crate::ast::AstType::*;
-use crate::lexer::{TokenType::*, token_to_string};
+use crate::lexer::{TokenType::*, token_to_string, token_get_value};
 
 /* returns the assembly output on success, returns a string containing error information on failure */
 pub fn parse(input: &[AstType]) -> Result<String, (String, i64)> {
 	let mut line: i64 = 1;
-	let mut iter = input.iter();
+	let iter = input.iter();
 
 	let datasect = String::from("section .data\n");
 	let mut textsect = String::from("section .text\n");
 
-	while let Some(i) = iter.next() {
+	for i in iter {
 		match i {
 			AstType::Newline => line += 1,
 			FunctionDefinition(name, _) => {
@@ -23,6 +23,22 @@ pub fn parse(input: &[AstType]) -> Result<String, (String, i64)> {
 				};
 
 				textsect.push_str(&format!("\t{}\n", instruction));
+			},
+			BuiltinMacroCall("syscall!", args) => {
+				for (i, v) in args.iter().enumerate() {
+					let v = token_get_value(v);
+
+					match i {
+						0 => textsect.push_str(&format!("\tmov rax, {v}\n")),
+						1 => textsect.push_str(&format!("\tmov rdi, {v}\n")),
+						2 => textsect.push_str(&format!("\tmov rsi, {v}\n")),
+						3 => textsect.push_str(&format!("\tmov rdx, {v}\n")),
+						4 => textsect.push_str(&format!("\tmov r10, {v}\n")),
+						5 => textsect.push_str(&format!("\tmov r8, {v}\n")),
+						6 => textsect.push_str(&format!("\tmov r9, {v}\n")),
+						_ => return Err((String::from("syscall! does not take more than 7 arguments"), line))
+					}
+				}
 			}
 			_ => ()
 		}

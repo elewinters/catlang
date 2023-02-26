@@ -1,5 +1,6 @@
 #![allow(unused_parens)]
 use std::fs;
+use std::env;
 use std::process::Command;
 
 mod options;
@@ -7,16 +8,23 @@ mod lexer;
 mod ast;
 mod parser;
 
+macro_rules! exit {
+    ($fmt:expr) => {
+		{
+        	println!("{}", String::from("catlang: \x1b[31merror:\x1b[0m ") + &$fmt);
+			std::process::exit(1);
+		}
+    }
+}
+
+
 fn main() {
 	/* ---------------------------- */
 	/*   get command line options   */
 	/* ---------------------------- */
 	let options = match options::get_options() {
 		Ok(x) => x,
-		Err(err) => {
-			println!("catlang: \x1b[31moptions error:\x1b[0m {}", err);
-			std::process::exit(1);
-		}
+		Err(err) => exit!(format!("{}", err))
 	};
 	if (options.verbose) {
 		println!("{:?}", options);
@@ -35,10 +43,7 @@ fn main() {
 	/* --------------------------- */
 	let ast = match ast::ast(&tokens) {
 		Ok(x) => x,
-		Err((err, line)) => {
-			println!("catlang: \x1b[31mparser error:\x1b[0m [line {line}] {}", err);
-			std::process::exit(1);
-		}
+		Err((err, line)) => exit!(format!("[line {line}] {}", err))
 	};
 	println!("\n\n{:?}", &ast);
 
@@ -47,10 +52,7 @@ fn main() {
 	/* -------------------------------------------- */
 	let assembly_output = match parser::parse(&ast) {
 		Ok(x) => x,
-		Err((err, line)) => {
-			println!("catlang: \x1b[31mparser error:\x1b[0m [line {line}] {}", err);
-			std::process::exit(1);
-		}
+		Err((err, line)) => exit!(format!("[line {line}] {}", err))
 	};
 
 	/* --------------------------------- */
@@ -63,26 +65,27 @@ fn main() {
 		};
 
 		if let Err(err) = result {
-			println!("catlang: \x1b[31merror:\x1b[0m failed to write assembly output, {}", err);
-			std::process::exit(1);
+			exit!(format!("failed to write assembly output, {}", err));
 		}
 	}
 	/* ------------------------------------------------------ */
 	/*  assemble and link assembly output to create a binary  */
 	/* ------------------------------------------------------ */
 	else {
-		if fs::write("/tmp/catlang_output.asm", &assembly_output).is_err() {
-			println!("catlang: \x1b[31merror:\x1b[0m failed to write assembly output to /tmp/catlang_output.asm");
-			std::process::exit(1);
+		let temp_dir = env::temp_dir();
+		let temp = temp_dir.display();
+
+		if fs::write(format!("{temp}/catlang_output.asm"), &assembly_output).is_err() {
+			exit!(format!("failed to write assembly output to {temp}/catlang_output.asm"));
 		}
 
 		let output_name = options.output_name.unwrap_or(String::from("output")); 
 
 		Command::new("nasm")
 		.arg("-felf64")
-		.arg("/tmp/catlang_output.asm")
+		.arg(format!("{temp}/catlang_output.asm"))
 		.arg("-o")
-		.arg("/tmp/catlang_output.o")
+		.arg(format!("{temp}/catlang_output.o"))
 		.spawn()
 		.unwrap()
 		.wait()
@@ -90,7 +93,7 @@ fn main() {
 
 		if (!options.link_libc) {
 			Command::new("ld")
-			.arg("/tmp/catlang_output.o")
+			.arg(format!("{temp}/catlang_output.o"))
 			.arg("-o")
 			.arg(&output_name)
 			.spawn()
@@ -101,7 +104,7 @@ fn main() {
 		else {
 			Command::new("gcc")
 			.arg("-no-pie")
-			.arg("/tmp/catlang_output.o")
+			.arg(format!("{temp}/catlang_output.o"))
 			.arg("-o")
 			.arg(&output_name)
 			.spawn()
@@ -110,12 +113,12 @@ fn main() {
 			.unwrap();
 		}
 
-		Command::new("rm")
-		.arg("/tmp/catlang_output.asm")
-		.arg("/tmp/catlang_output.o")
-		.spawn()
-		.unwrap()
-		.wait()
-		.unwrap();
+		if fs::remove_file("{temp}/catlang_output.asm").is_err() {
+			exit!(format!("failed to delete {temp}/catlang_output.asm"))
+		}
+
+		if fs::remove_file("{temp}/catlang_output.o").is_err() {
+			exit!(format!("failed to delete {temp}/catlang_output.o"))
+		}
 	}
 }
