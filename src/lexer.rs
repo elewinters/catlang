@@ -20,7 +20,7 @@ impl TokenType {
 			TokenType::IntLiteral(x) => format!("int literal '{x}'"),
 
 			TokenType::Operator(x) => format!("operator '{x}'"),
-			TokenType::Newline => format!("'newline'")
+			TokenType::Newline => String::from("'newline'")
 		}
 	}
 }
@@ -72,7 +72,7 @@ pub fn lex(input: Vec<u8>) -> Vec<TokenType> {
 			continue;
 		}
 
-		if (v.is_ascii_punctuation() && v != '"') {
+		if (v.is_ascii_punctuation() && v != '"' && v != '_') {
 			tokens.push(TokenType::Operator(v));
 		}
 		
@@ -110,7 +110,7 @@ pub fn lex(input: Vec<u8>) -> Vec<TokenType> {
 		if (KEYWORDS.contains(&identifier.as_ref())) {
 			tokens.push(TokenType::Keyword(identifier));
 		}
-		else if (v.is_ascii_alphabetic()) {
+		else if (v.is_ascii_alphabetic() || v == '_') {
 			tokens.push(TokenType::Identifier(identifier));
 		}
 		else if (v.is_alphanumeric()) {

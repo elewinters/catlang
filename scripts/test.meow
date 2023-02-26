@@ -1,7 +1,0 @@
-fn sum(x: int32, y: int32) { 
-	return x + y; 
-}
-
-fn main() {
-	let test: int64 = "Hello, world!";
-}

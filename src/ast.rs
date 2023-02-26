@@ -8,10 +8,12 @@ pub enum AstType {
 	/* function name, optional hashmap of paramaters (key being the identifier, value being the datatype) */
 	FunctionDefinition(String, Option<HashMap<String, String>>),
 	/* variable name, type, and initializer value */
-	VariableDefinition(String, String, String)
+	VariableDefinition(String, String, String),
+	/* macro name, arguments */
+	BuiltinMacroCall(String, String)
 }
 
-pub fn ast(input: &Vec<TokenType>) -> Result<Vec<AstType>, (String, i64)> {
+pub fn ast(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 	let mut ast: Vec<AstType> = Vec::new();
 	let mut line: i64 = 1;
 
@@ -64,6 +66,27 @@ pub fn ast(input: &Vec<TokenType>) -> Result<Vec<AstType>, (String, i64)> {
 
 				/* push everything to the AST */
 				ast.push(AstType::VariableDefinition(variable_name.to_owned(), variable_type.to_owned(), intializer_value.to_owned()));
+			}
+			/* builtin macro calls */
+			Identifier(identifier) if identifier.ends_with('!') => {
+				/* check for ( */
+				match iter.next() {
+					Some(Operator(operator)) if *operator == '(' => (),
+					_ => return Err((format!("expected operator '(' after macro '{identifier}'"), line))
+				}
+
+				let argument = match iter.next() {
+					Some(StringLiteral(x)) => x,
+					_ => return Err((format!("expected string literal in argument to macro '{identifier}'"), line))
+				};
+				
+				/* check for ) */
+				match iter.next() {
+					Some(Operator(operator)) if *operator == ')' => (),
+					_ => return Err(("expected operator ')' after macro argument".to_owned(), line))
+				}
+
+				ast.push(AstType::BuiltinMacroCall(identifier.to_owned(), argument.to_owned()));
 			}
 			_ => (),
 		}
