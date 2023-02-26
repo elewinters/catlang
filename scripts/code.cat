@@ -1,4 +1,4 @@
 fn _start() {
-	syscall!(60, 
-		1);
+	syscall!(1, 1, "Hello, world!", 14);
+	syscall!(60, 0);
 }

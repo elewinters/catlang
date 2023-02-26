@@ -1,14 +1,27 @@
 use crate::ast::AstType;
 use crate::ast::AstType::*;
-use crate::lexer::{TokenType::*, token_to_string, token_get_value};
+use crate::lexer::{TokenType::*, token_to_string};
+
+/* given a string, this function will insert that string into the datasection */
+/* and return the identifier for it (like L0, L1, etc...) */
+fn resolve_string_literal(datasect: &mut String, literal: &str) -> String {
+	static mut LITERALS_AMOUNT: i64 = 0;
+
+	unsafe {
+		datasect.push_str(&format!("\tL{LITERALS_AMOUNT}: db `{literal}`, 0\n"));
+		LITERALS_AMOUNT += 1;
+
+		format!("L{}", LITERALS_AMOUNT - 1)
+	}
+}
 
 /* returns the assembly output on success, returns a string containing error information on failure */
 pub fn parse(input: &[AstType]) -> Result<String, (String, i64)> {
 	let mut line: i64 = 1;
 	let iter = input.iter();
 
-	let datasect = String::from("section .data\n");
-	let mut textsect = String::from("section .text\n");
+	let mut datasect = String::from("section .data\n");
+	let mut textsect = String::from("section .text\n\n");
 
 	for i in iter {
 		match i {
@@ -26,7 +39,13 @@ pub fn parse(input: &[AstType]) -> Result<String, (String, i64)> {
 			},
 			BuiltinMacroCall("syscall!", args) => {
 				for (i, v) in args.iter().enumerate() {
-					let v = token_get_value(v);
+					let v = match (v) {
+						IntLiteral(x) => x.to_owned(),
+						StringLiteral(x) => resolve_string_literal(&mut datasect, &x),
+						Identifier(x) => x.to_owned(),
+						
+						err => return Err((format!("expected either an int literal, string literal or identifier in call to macro syscall!, but got {}", token_to_string(&err)), line))
+					};
 
 					match i {
 						0 => textsect.push_str(&format!("\tmov rax, {v}\n")),

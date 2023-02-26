@@ -23,6 +23,7 @@ pub fn token_to_string(token: &TokenType) -> String {
 	}
 }
 
+#[allow(dead_code)]
 pub fn token_get_value(token: &TokenType) -> String {
 	match token {
 		TokenType::Keyword(x) => x.to_owned(),
@@ -66,6 +67,7 @@ pub fn print_tokens(input: &Vec<TokenType>) {
 			TokenType::Newline => println!("Newline")
 		}
 	}
+	println!();
 }
 
 pub fn lex(input: Vec<u8>) -> Vec<TokenType> {

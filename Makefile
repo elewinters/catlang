@@ -5,9 +5,9 @@ PROFILE ?= "debug"
 .SILENT: build
 
 build:
-	echo '---------------------------------'
+	echo '-----------------------------------'
 	echo "   building with $(PROFILE) profile"
-	echo '---------------------------------'
+	echo '-----------------------------------'
 
 	if [ $(PROFILE) = "debug" ]; then \
 		cargo build; \

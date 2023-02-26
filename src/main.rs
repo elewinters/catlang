@@ -26,6 +26,9 @@ fn main() {
 		Err(err) => exit!(format!("{}", err))
 	};
 	if (options.verbose) {
+		println!("---------------------");
+		println!("       options       ");
+		println!("---------------------");
 		println!("{:?}", options);
 	}
 
@@ -34,6 +37,9 @@ fn main() {
 	/* --------------------------- */
 	let tokens = lexer::lex(options.input);
 	if (options.verbose) {
+		println!("--------------------");
+		println!("       tokens       ");
+		println!("--------------------");
 		lexer::print_tokens(&tokens);
 	}
 
@@ -44,7 +50,12 @@ fn main() {
 		Ok(x) => x,
 		Err((err, line)) => exit!(format!("[line {line}] {}", err))
 	};
-	println!("\n\n{:?}", &ast);
+	if (options.verbose) {
+		println!("------------------------");
+		println!("  abstract syntax tree  ");
+		println!("------------------------");
+		println!("{:?}", &ast);
+	}
 
 	/* -------------------------------------------- */
 	/*  parse AST and generate the assembly output  */
