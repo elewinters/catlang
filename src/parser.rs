@@ -41,10 +41,10 @@ pub fn parse(input: &[AstType]) -> Result<String, (String, i64)> {
 				for (i, v) in args.iter().enumerate() {
 					let v = match (v) {
 						IntLiteral(x) => x.to_owned(),
-						StringLiteral(x) => resolve_string_literal(&mut datasect, &x),
+						StringLiteral(x) => resolve_string_literal(&mut datasect, x),
 						Identifier(x) => x.to_owned(),
-						
-						err => return Err((format!("expected either an int literal, string literal or identifier in call to macro syscall!, but got {}", token_to_string(&err)), line))
+
+						err => return Err((format!("expected either an int literal, string literal or identifier in call to macro syscall!, but got {}", token_to_string(err)), line))
 					};
 
 					match i {
