@@ -81,35 +81,35 @@ fn main() {
 		let output_name = options.output_name.unwrap_or(String::from("output")); 
 
 		Command::new("nasm")
-		.arg("-felf64")
-		.arg(format!("{temp}/catlang_output.asm"))
-		.arg("-o")
-		.arg(format!("{temp}/catlang_output.o"))
-		.spawn()
-		.unwrap()
-		.wait()
-		.unwrap();
+			.arg("-felf64")
+			.arg(format!("{temp}/catlang_output.asm"))
+			.arg("-o")
+			.arg(format!("{temp}/catlang_output.o"))
+			.spawn()
+			.unwrap()
+			.wait()
+			.unwrap();
 
 		if (!options.link_libc) {
 			Command::new("ld")
-			.arg(format!("{temp}/catlang_output.o"))
-			.arg("-o")
-			.arg(&output_name)
-			.spawn()
-			.unwrap()
-			.wait()
-			.unwrap();
+				.arg(format!("{temp}/catlang_output.o"))
+				.arg("-o")
+				.arg(&output_name)
+				.spawn()
+				.unwrap()
+				.wait()
+				.unwrap();
 		}
 		else {
 			Command::new("gcc")
-			.arg("-no-pie")
-			.arg(format!("{temp}/catlang_output.o"))
-			.arg("-o")
-			.arg(&output_name)
-			.spawn()
-			.unwrap()
-			.wait()
-			.unwrap();
+				.arg("-no-pie")
+				.arg(format!("{temp}/catlang_output.o"))
+				.arg("-o")
+				.arg(&output_name)
+				.spawn()
+				.unwrap()
+				.wait()
+				.unwrap();
 		}
 
 		if let Err(err) = fs::remove_file(format!("{temp}/catlang_output.asm")) {
