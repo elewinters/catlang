@@ -9,12 +9,12 @@ mod ast;
 mod parser;
 
 macro_rules! exit {
-    ($fmt:expr) => {
+	($fmt:expr) => {
 		{
-        	println!("{}", String::from("catlang: \x1b[31merror:\x1b[0m ") + &$fmt);
+			println!("{}", String::from("catlang: \x1b[31merror:\x1b[0m ") + &$fmt);
 			std::process::exit(1);
 		}
-    }
+	}
 }
 
 fn main() {
