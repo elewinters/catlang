@@ -1,13 +1,21 @@
 section .data
-	L0: db `Hello, 
-	world!`, 0
+	L0: db `pussy :33\n`, 0
+	L1: db `Hello, world!\n`, 0
 section .text
+
+global meow
+meow:
+	mov rax, 1
+	mov rdi, 1
+	mov rsi, L0
+	mov rdx, 10
+	syscall
 
 global _start
 _start:
 	mov rax, 1
 	mov rdi, 1
-	mov rsi, L0
+	mov rsi, L1
 	mov rdx, 14
 	syscall
 

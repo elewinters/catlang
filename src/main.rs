@@ -17,6 +17,26 @@ macro_rules! exit {
 	}
 }
 
+/* 
+	TODO:
+		rewrite the lexer
+		add a nicer way to print the AST
+		NOW:
+			add function calling (no paramaters or return values at first)
+			add variables
+			add function paramaters
+			add expressions
+			add function returning
+			add interfacing with libc
+
+			add control flow (if & match)
+			add arrays
+			add support for variadic functions
+
+			add loops (while & for)
+			
+*/
+
 fn main() {
 	/* ---------------------------- */
 	/*   get command line options   */
