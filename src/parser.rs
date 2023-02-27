@@ -7,6 +7,8 @@ use crate::lexer::{TokenType::*, token_to_string};
 fn resolve_string_literal(datasect: &mut String, literal: &str) -> String {
 	static mut LITERALS_AMOUNT: i64 = 0;
 
+	/* mutating a static mut is unsafe because it can cause data races with multithreading */
+	/* but because this program is singlethreaded (for now) this is perfectly safe */
 	unsafe {
 		datasect.push_str(&format!("\tL{LITERALS_AMOUNT}: db `{literal}`, 0\n"));
 		LITERALS_AMOUNT += 1;
@@ -29,7 +31,13 @@ pub fn parse(input: &[AstType]) -> Result<String, (String, i64)> {
 			FunctionDefinition(name, _) => {
 				textsect.push_str(&format!("global {name}\n{name}:\n"));
 			},
-			BuiltinMacroCall("asm!", args) => {
+			FunctionCall(name, _) => {
+				textsect.push_str(&format!("\tcall {name}\n\n"));
+			}
+			ScopeEnd => {
+				textsect.push_str("\tret\n\n");
+			},
+			MacroCall("asm!", args) => {
 				let instruction = match args[0] {
 					StringLiteral(ref x) => x,
 					err => return Err((format!("expected token type to be a string literal, not {}", token_to_string(err)), line))
@@ -37,7 +45,7 @@ pub fn parse(input: &[AstType]) -> Result<String, (String, i64)> {
 
 				textsect.push_str(&format!("\t{}\n", instruction));
 			},
-			BuiltinMacroCall("syscall!", args) => {
+			MacroCall("syscall!", args) => {
 				for (i, v) in args.iter().enumerate() {
 					let v = match (v) {
 						IntLiteral(x) => x.to_owned(),
@@ -61,9 +69,9 @@ pub fn parse(input: &[AstType]) -> Result<String, (String, i64)> {
 				
 				textsect.push_str("\tsyscall\n\n");
 			}
-			BuiltinMacroCall(name, _) => {
+			MacroCall(name, _) => {
 				return Err((format!("macro '{}' does not exist", name), line));
-			} 
+			}
 			_ => ()
 		}
 	}

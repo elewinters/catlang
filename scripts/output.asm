@@ -11,6 +11,8 @@ meow:
 	mov rdx, 10
 	syscall
 
+	ret
+
 global _start
 _start:
 	mov rax, 1
@@ -19,7 +21,11 @@ _start:
 	mov rdx, 14
 	syscall
 
+	call meow
+
 	mov rax, 60
 	mov rdi, 0
 	syscall
+
+	ret
 

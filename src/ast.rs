@@ -10,7 +10,11 @@ pub enum AstType<'a> {
 	/* variable name, type, and initializer value */
 	VariableDefinition(&'a str, &'a str, &'a str),
 	/* macro name, arguments */
-	BuiltinMacroCall(&'a str, Vec<&'a TokenType>),
+	MacroCall(&'a str, Vec<&'a TokenType>),
+	/* function name, arguments */
+	FunctionCall(&'a str, Vec<&'a TokenType>),
+	/* this is so that functions know when they end */
+	ScopeEnd,
 	/* for counting the line number in parser.rs */
 	Newline
 }
@@ -27,6 +31,8 @@ pub fn ast(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 				line += 1;
 				ast.push(AstType::Newline);
 			},
+			/* scope end */
+			Operator('}') => ast.push(AstType::ScopeEnd),
 			/* function definitions */
 			Keyword(keyword) if keyword == "fn" => {
 				let function_name = match iter.next() {
@@ -73,7 +79,7 @@ pub fn ast(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 				ast.push(AstType::VariableDefinition(variable_name, variable_type, intializer_value));
 			}
 			/* builtin macro calls */
-			Identifier(identifier) if identifier.ends_with('!') => {
+			Identifier(identifier) => {
 				/* check for ( */
 				match iter.next() {
 					Some(Operator('(')) => (),
@@ -97,7 +103,12 @@ pub fn ast(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 					}
 				}
 
-				ast.push(AstType::BuiltinMacroCall(identifier, arguments));
+				if (identifier.ends_with("!")) {
+					ast.push(AstType::MacroCall(identifier, arguments));
+				}
+				else {
+					ast.push(AstType::FunctionCall(identifier, arguments));
+				}
 			}
 			_ => (),
 		}
