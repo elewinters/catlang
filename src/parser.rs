@@ -1,6 +1,18 @@
+use std::collections::HashMap;
+
 use crate::ast::AstType;
 use crate::ast::AstType::*;
 use crate::lexer::{TokenType::*, token_to_string};
+
+fn get_size_of_type(input: &str, line: i64) -> Result<(&'static str, u8), (String, i64)> {
+	match (input) {
+		"int8" => Ok(("byte", 1)),
+		"int16" => Ok(("word", 2)),
+		"int32" => Ok(("dword", 4)),
+		"int64" => Ok(("qword", 8)),
+		_ => return Err((format!("'{input}' is not a valid type"), line))
+	}
+} 
 
 /* given a string, this function will insert that string into the datasection */
 /* and return the identifier for it (like L0, L1, etc...) */
@@ -25,18 +37,38 @@ pub fn parse(input: &[AstType]) -> Result<String, (String, i64)> {
 	let mut datasect = String::from("section .data\n");
 	let mut textsect = String::from("section .text\n\n");
 
+	let mut local_variables: HashMap<String, String> = HashMap::new();
+
+	let mut stacksize = 0;
+	let mut stackspace = 0;
+
 	for i in iter {
 		match i {
 			AstType::Newline => line += 1,
+			/* function stuffs */
 			FunctionDefinition(name, _) => {
 				textsect.push_str(&format!("global {name}\n{name}:\n"));
+				textsect.push_str(&String::from("\tpush rbp\n\tmov rbp, rsp\n\n"));
 			},
 			FunctionCall(name, _) => {
 				textsect.push_str(&format!("\tcall {name}\n\n"));
 			}
 			ScopeEnd => {
+				textsect.push_str("\tpop rbp\n");
 				textsect.push_str("\tret\n\n");
 			},
+			/* variable stuffs */
+			VariableDefinition(name, vartype, initval) => {
+				let (word, bytesize) = get_size_of_type(&vartype, line)?;
+
+				stacksize += bytesize;
+
+				let addr = format!("[rbp-{stacksize}]");
+
+				textsect.push_str(&format!("\tmov {word} {addr}, {initval}\n"));
+				local_variables.insert(name.to_owned().to_owned(), addr);
+			},
+			/* macro stuffs */
 			MacroCall("asm!", args) => {
 				let instruction = match args[0] {
 					StringLiteral(ref x) => x,
@@ -50,7 +82,12 @@ pub fn parse(input: &[AstType]) -> Result<String, (String, i64)> {
 					let v = match (v) {
 						IntLiteral(x) => x.to_owned(),
 						StringLiteral(x) => resolve_string_literal(&mut datasect, x),
-						Identifier(x) => x.to_owned(),
+						Identifier(varname) => { 
+							match local_variables.get(varname) {
+								Some(varaddr) => varaddr,
+								None => return Err((format!("variable '{varname}' is not defined in the current scope"), line))
+							}.to_owned()
+						},
 
 						err => return Err((format!("expected either an int literal, string literal or identifier in call to macro syscall!, but got {}", token_to_string(err)), line))
 					};
@@ -68,10 +105,10 @@ pub fn parse(input: &[AstType]) -> Result<String, (String, i64)> {
 				}
 				
 				textsect.push_str("\tsyscall\n\n");
-			}
+			},
 			MacroCall(name, _) => {
 				return Err((format!("macro '{}' does not exist", name), line));
-			}
+			},
 			_ => ()
 		}
 	}
