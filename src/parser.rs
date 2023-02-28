@@ -37,10 +37,15 @@ pub fn parse(input: &[AstType]) -> Result<String, (String, i64)> {
 	let mut datasect = String::from("section .data\n");
 	let mut textsect = String::from("section .text\n\n");
 
+	/* key is the variable name, value is its address */
 	let mut local_variables: HashMap<String, String> = HashMap::new();
 
+	/* not even gonna bother explaining this */
 	let mut stacksize = 0;
 	let mut stackspace = 0;
+
+	let mut calls_funcs = false;
+	let mut stack_subtraction_index = 0;
 
 	for i in iter {
 		match i {
@@ -49,19 +54,43 @@ pub fn parse(input: &[AstType]) -> Result<String, (String, i64)> {
 			FunctionDefinition(name, _) => {
 				textsect.push_str(&format!("global {name}\n{name}:\n"));
 				textsect.push_str(&String::from("\tpush rbp\n\tmov rbp, rsp\n\n"));
+
+				stack_subtraction_index = textsect.len() - 1;
 			},
 			FunctionCall(name, _) => {
 				textsect.push_str(&format!("\tcall {name}\n\n"));
-			}
+				calls_funcs = true;
+			},
 			ScopeEnd => {
-				textsect.push_str("\tpop rbp\n");
+				if (calls_funcs && stackspace != 0) {
+					textsect.push_str("\tleave\n");
+				}
+				else {
+					textsect.push_str("\tpop rbp\n");
+				}
+				
+				/* we want to subtract the value of stackspace from rsp if we call other functions */
+				/* and if the aren't any local variables in the current function */
+				if (calls_funcs && stackspace != 0) {
+					textsect.insert_str(stack_subtraction_index, &format!("\tsub rsp, {stackspace}\n"));
+				}
+
 				textsect.push_str("\tret\n\n");
+				stackspace = 0;
+				stacksize = 0;
+				calls_funcs = false;
+
+				local_variables.clear();
 			},
 			/* variable stuffs */
 			VariableDefinition(name, vartype, initval) => {
 				let (word, bytesize) = get_size_of_type(&vartype, line)?;
 
 				stacksize += bytesize;
+				/* grow stackspace if we ran out of space */
+				if (stacksize > stackspace) {
+					stackspace += 16;
+				}
 
 				let addr = format!("[rbp-{stacksize}]");
 
@@ -109,7 +138,6 @@ pub fn parse(input: &[AstType]) -> Result<String, (String, i64)> {
 			MacroCall(name, _) => {
 				return Err((format!("macro '{}' does not exist", name), line));
 			},
-			_ => ()
 		}
 	}
 
