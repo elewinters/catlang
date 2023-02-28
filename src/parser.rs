@@ -53,7 +53,7 @@ pub fn parse(input: &[AstType]) -> Result<String, (String, i64)> {
 			/* function stuffs */
 			FunctionDefinition(name, _) => {
 				textsect.push_str(&format!("global {name}\n{name}:\n"));
-				textsect.push_str(&String::from("\tpush rbp\n\tmov rbp, rsp\n\n"));
+				textsect.push_str("\tpush rbp\n\tmov rbp, rsp\n\n");
 
 				stack_subtraction_index = textsect.len() - 1;
 			},
@@ -84,7 +84,7 @@ pub fn parse(input: &[AstType]) -> Result<String, (String, i64)> {
 			},
 			/* variable stuffs */
 			VariableDefinition(name, vartype, initval) => {
-				let (word, bytesize) = get_size_of_type(&vartype, line)?;
+				let (word, bytesize) = get_size_of_type(vartype, line)?;
 
 				stacksize += bytesize;
 				/* grow stackspace if we ran out of space */
@@ -95,7 +95,7 @@ pub fn parse(input: &[AstType]) -> Result<String, (String, i64)> {
 				let addr = format!("[rbp-{stacksize}]");
 
 				textsect.push_str(&format!("\tmov {word} {addr}, {initval}\n"));
-				local_variables.insert(name.to_owned().to_owned(), addr);
+				local_variables.insert(name.to_string(), addr);
 			},
 			/* macro stuffs */
 			MacroCall("asm!", args) => {
@@ -113,9 +113,9 @@ pub fn parse(input: &[AstType]) -> Result<String, (String, i64)> {
 						StringLiteral(x) => resolve_string_literal(&mut datasect, x),
 						Identifier(varname) => { 
 							match local_variables.get(varname) {
-								Some(varaddr) => varaddr,
+								Some(varaddr) => varaddr.to_owned(),
 								None => return Err((format!("variable '{varname}' is not defined in the current scope"), line))
-							}.to_owned()
+							}
 						},
 
 						err => return Err((format!("expected either an int literal, string literal or identifier in call to macro syscall!, but got {}", token_to_string(err)), line))

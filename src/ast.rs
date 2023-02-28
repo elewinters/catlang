@@ -103,7 +103,7 @@ pub fn ast(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 					}
 				}
 
-				if (identifier.ends_with("!")) {
+				if (identifier.ends_with('!')) {
 					ast.push(AstType::MacroCall(identifier, arguments));
 				}
 				else {
