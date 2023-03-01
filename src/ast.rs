@@ -1,12 +1,10 @@
 use crate::lexer::{TokenType, token_to_string};
 use crate::lexer::TokenType::*;
 
-use std::collections::HashMap;
-
 #[derive(Debug)]
 pub enum AstType<'a> {
-	/* function name, optional hashmap of paramaters (key being the identifier, value being the datatype) */
-	FunctionDefinition(&'a str, HashMap<String, String>),
+	/* function name, tuple of vectors, first vector holds names, second one holds types */
+	FunctionDefinition(&'a str, (Vec<String>, Vec<String>)),
 	/* variable name, type, and initializer value */
 	VariableDefinition(&'a str, &'a str, &'a str),
 	/* macro name, arguments */
@@ -47,7 +45,8 @@ pub fn ast(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 				}
 
 				/* add function arguments if they exist */
-				let mut args: HashMap<String, String> = HashMap::new();
+				let mut arg_names: Vec<String> = Vec::new();
+				let mut arg_types: Vec<String> = Vec::new();
 
 				while let Some(i) = iter.next() {
 					match i {
@@ -57,9 +56,10 @@ pub fn ast(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 								_ => return Err((format!("expected an operator ':' after function paramater '{varname}'"), line)) 
 							}
 
-							args.insert(varname.to_owned(), match iter.next() {
+							arg_names.push(varname.to_owned()); 
+							arg_types.push(match iter.next() {
 								Some(Identifier(vartype)) => vartype.to_owned(),
-								_ => return Err((format!("expected an identifier after paramater name '{varname}' in function decleration of {function_name}"), line))
+								_ => return Err((format!("expected a type after paramater name '{varname}' in function decleration of {function_name}"), line))
 							});
 
 							match iter.next() {
@@ -75,7 +75,7 @@ pub fn ast(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 					}
 				}
 				
-				ast.push(AstType::FunctionDefinition(function_name, args));
+				ast.push(AstType::FunctionDefinition(function_name, (arg_names, arg_types)));
 			},
 			/* variable declerations */
 			Keyword(keyword) if keyword == "let" => {

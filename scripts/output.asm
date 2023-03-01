@@ -1,7 +1,7 @@
 section .data
 	L0: db `meow\n`, 0
-	L1: db `hi :D\n`, 0
-	L2: db `Hello, world!\n`, 0
+	L1: db `Hello, world!\n`, 0
+	L2: db `hi :D\n`, 0
 section .text
 
 global meow
@@ -18,17 +18,17 @@ meow:
 	pop rbp
 	ret
 
-global args
-args:
+global print
+print:
 	push rbp
 	mov rbp, rsp
 
 	mov qword [rbp-8], rdi
 	mov qword [rbp-16], rsi
-	mov rax, [rbp-16]
-	mov rdi, [rbp-8]
-	mov rsi, L1
-	mov rdx, 6
+	mov rax, 1
+	mov rdi, 1
+	mov rsi, [rbp-8]
+	mov rdx, [rbp-16]
 	syscall
 
 	pop rbp
@@ -38,23 +38,21 @@ global _start
 _start:
 	push rbp
 	mov rbp, rsp
-	sub rsp, 21
+	sub rsp, 16
 
 	mov qword [rbp-8], 1
-	mov dword [rbp-12], 50
-	mov qword [rbp-20], 1
+	mov qword [rbp-16], 1
 	mov rax, [rbp-8]
-	mov rdi, [rbp-20]
-	mov rsi, L2
+	mov rdi, [rbp-16]
+	mov rsi, L1
 	mov rdx, 14
 	syscall
 
-	call meow
+	mov rdi, L2
+	mov rsi, 6
+	call print
 
-	mov byte [rbp-21], 10
-	mov rdi, [rbp-8]
-	mov rsi, [rbp-20]
-	call args
+	call meow
 
 	mov rax, 60
 	mov rdi, 0

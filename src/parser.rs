@@ -95,7 +95,7 @@ pub fn parse(input: &[AstType]) -> Result<String, (String, i64)> {
 				textsect.push_str("\tpush rbp\n\tmov rbp, rsp\n\n");
 
 				/* add arguments to the stack */
-				for (iteration, kv) in args.iter().enumerate() {
+				for i in 0..args.0.len() {
 					add_variable(
 						line,
 	
@@ -103,7 +103,7 @@ pub fn parse(input: &[AstType]) -> Result<String, (String, i64)> {
 						&mut textsect, 
 						&mut local_variables,
 	
-						kv.0, kv.1, Some(get_register_from_argc(iteration, line)?)
+						&args.0[i], &args.1[i], Some(get_register_from_argc(i, line)?)
 					)?;
 				}
 				
