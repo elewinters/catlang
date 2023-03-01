@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::collections::HashSet;
 
 use crate::ast::AstType;
 use crate::ast::AstType::*;
@@ -39,7 +40,8 @@ pub fn parse(input: &[AstType]) -> Result<String, (String, i64)> {
 
 	/* key is the variable name, value is its address */
 	let mut local_variables: HashMap<String, String> = HashMap::new();
-
+	let mut functions: HashSet<String> = HashSet::new(); 
+	
 	/* not even gonna bother explaining this */
 	let mut stacksize = 0;
 	let mut stackspace = 0;
@@ -56,8 +58,13 @@ pub fn parse(input: &[AstType]) -> Result<String, (String, i64)> {
 				textsect.push_str("\tpush rbp\n\tmov rbp, rsp\n\n");
 
 				stack_subtraction_index = textsect.len() - 1;
+				functions.insert(name.to_string());
 			},
 			FunctionCall(name, _) => {
+				if (!functions.contains(name.to_owned())) {
+					return Err((format!("undefined function '{name}'"), line))
+				}
+				
 				textsect.push_str(&format!("\tcall {name}\n\n"));
 				calls_funcs = true;
 			},
