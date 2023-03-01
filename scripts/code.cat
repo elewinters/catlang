@@ -2,12 +2,18 @@ fn meow() {
 	syscall!(1, 1, "meow\n", 5);
 }
 
+fn args(arg1: int64, arg2: int64) {
+	syscall!(arg1, arg2, "hi :D\n", 6);
+}
+
 fn _start() {
 	let sys_write: int64 = 1;
+	let gay: int32 = 50;
 	let stdout: int64 = 1;
 
 	syscall!(sys_write, stdout, "Hello, world!\n", 14);
 	meow();
+	args(sys_write, stdout);
 	
 	syscall!(60, 0);
 }

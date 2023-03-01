@@ -6,7 +6,7 @@ use std::collections::HashMap;
 #[derive(Debug)]
 pub enum AstType<'a> {
 	/* function name, optional hashmap of paramaters (key being the identifier, value being the datatype) */
-	FunctionDefinition(&'a str, Option<HashMap<String, String>>),
+	FunctionDefinition(&'a str, HashMap<String, String>),
 	/* variable name, type, and initializer value */
 	VariableDefinition(&'a str, &'a str, &'a str),
 	/* macro name, arguments */
@@ -40,7 +40,42 @@ pub fn ast(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 					_ => return Err(("expected identifier after function keyword".to_owned(), line))
 				};
 
-				ast.push(AstType::FunctionDefinition(function_name, None));
+				/* check for ( */
+				match iter.next() {
+					Some(Operator('(')) => (),
+					_ => return Err((format!("in function definition of {function_name}, expected ( after the function name"), line))
+				}
+
+				/* add function arguments if they exist */
+				let mut args: HashMap<String, String> = HashMap::new();
+
+				while let Some(i) = iter.next() {
+					match i {
+						Identifier(varname) => {
+							match iter.next() {
+								Some(Operator(':')) => (),
+								_ => return Err((format!("expected an operator ':' after function paramater '{varname}'"), line)) 
+							}
+
+							args.insert(varname.to_owned(), match iter.next() {
+								Some(Identifier(vartype)) => vartype.to_owned(),
+								_ => return Err((format!("expected an identifier after paramater name '{varname}' in function decleration of {function_name}"), line))
+							});
+
+							match iter.next() {
+								Some(Operator(',')) | Some(Operator(')')) => (),
+
+								Some(Operator('{')) => return Err((format!("unexpected opening curly brace '{{' in paramater list of function definition of {function_name}, did you forget to close the parentheses of the argument list?"), line)),
+								_ => return Err((format!("expected a comma after paramater '{varname}'"), line))
+							}
+						}
+
+						Operator(')') | Operator('{') => break,
+						err => return Err((format!("expected either an operator ')', operator '{{' or identifier in function definition of '{function_name}', but got {} instead", token_to_string(err)), line))
+					}
+				}
+				
+				ast.push(AstType::FunctionDefinition(function_name, args));
 			},
 			/* variable declerations */
 			Keyword(keyword) if keyword == "let" => {
