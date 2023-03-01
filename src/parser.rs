@@ -1,9 +1,13 @@
 use std::collections::HashMap;
-use std::collections::HashSet;
 
 use crate::ast::AstType;
 use crate::ast::AstType::*;
 use crate::lexer::{TokenType::*, token_to_string};
+
+/* this will have more fields in the future, like the return value */
+struct Function<'a> {
+	args: &'a(Vec<String>, Vec<String>)
+}
 
 fn get_size_of_type(input: &str, line: i64) -> Result<(&'static str, i32), (String, i64)> {
 	match (input) {
@@ -78,7 +82,7 @@ pub fn parse(input: &[AstType]) -> Result<String, (String, i64)> {
 
 	/* key is the variable name, value is its address */
 	let mut local_variables: HashMap<String, String> = HashMap::new();
-	let mut functions: HashSet<String> = HashSet::new(); 
+	let mut functions: HashMap<String, Function> = HashMap::new(); 
 	
 	/* not even gonna bother explaining this */
 	let mut stacksize = 0;
@@ -108,11 +112,21 @@ pub fn parse(input: &[AstType]) -> Result<String, (String, i64)> {
 				}
 				
 				stack_subtraction_index = textsect.len() - 1;
-				functions.insert(name.to_string());
+				functions.insert(name.to_string(), Function { args });
 			},
 			FunctionCall(name, args) => {
-				if (!functions.contains(name.to_owned())) {
-					return Err((format!("undefined function '{name}'"), line))
+				let function = match functions.get(*name) {
+					Some(x) => x,
+					None => return Err((format!("undefined function '{name}'"), line))
+				};
+
+				if (args.len() != function.args.0.len()) {
+					/* weird looking if statment is here so we dont produce an error message with broken english */
+					return Err((format!("function '{name}' accepts {} arguments but {} {} given", function.args.0.len(), args.len(), if (args.len() > 1) {
+						"were"
+					} else {
+						"was"
+					}), line))
 				}
 
 				/* insert arguments to their respective registers */
