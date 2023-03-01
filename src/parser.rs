@@ -47,7 +47,6 @@ fn resolve_string_literal(datasect: &mut String, literal: &str) -> String {
 fn add_variable(
 	line: i64,
 	stacksize: &mut i32,
-	stackspace: &mut i32,
 
 	textsect: &mut String,
 	local_variables: &mut HashMap<String, String>,
@@ -59,10 +58,6 @@ fn add_variable(
 	let (word, bytesize) = get_size_of_type(vartype, line)?;
 
 	*stacksize += bytesize;
-	/* grow stackspace if we ran out of space */
-	if (stacksize > stackspace) {
-		*stackspace += 16;
-	}
 
 	let addr = format!("[rbp-{stacksize}]");
 
@@ -87,7 +82,6 @@ pub fn parse(input: &[AstType]) -> Result<String, (String, i64)> {
 	
 	/* not even gonna bother explaining this */
 	let mut stacksize = 0;
-	let mut stackspace = 0;
 
 	let mut calls_funcs = false;
 	let mut stack_subtraction_index = 0;
@@ -106,7 +100,6 @@ pub fn parse(input: &[AstType]) -> Result<String, (String, i64)> {
 						line,
 	
 						&mut stacksize,
-						&mut stackspace, 
 						&mut textsect, 
 						&mut local_variables,
 	
@@ -144,7 +137,7 @@ pub fn parse(input: &[AstType]) -> Result<String, (String, i64)> {
 				calls_funcs = true;
 			},
 			ScopeEnd => {
-				if (calls_funcs && stackspace != 0) {
+				if (calls_funcs && stacksize != 0) {
 					textsect.push_str("\tleave\n");
 				}
 				else {
@@ -153,12 +146,11 @@ pub fn parse(input: &[AstType]) -> Result<String, (String, i64)> {
 				
 				/* we want to subtract the value of stackspace from rsp if we call other functions */
 				/* and if the aren't any local variables in the current function */
-				if (calls_funcs && stackspace != 0) {
-					textsect.insert_str(stack_subtraction_index, &format!("\tsub rsp, {stackspace}\n"));
+				if (calls_funcs && stacksize != 0) {
+					textsect.insert_str(stack_subtraction_index, &format!("\tsub rsp, {stacksize}\n"));
 				}
 
 				textsect.push_str("\tret\n\n");
-				stackspace = 0;
 				stacksize = 0;
 				calls_funcs = false;
 
@@ -170,7 +162,6 @@ pub fn parse(input: &[AstType]) -> Result<String, (String, i64)> {
 					line,
 
 					&mut stacksize,
-					&mut stackspace, 
 					&mut textsect, 
 					&mut local_variables,
 

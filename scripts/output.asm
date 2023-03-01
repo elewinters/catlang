@@ -38,7 +38,7 @@ global _start
 _start:
 	push rbp
 	mov rbp, rsp
-	sub rsp, 32
+	sub rsp, 21
 
 	mov qword [rbp-8], 1
 	mov dword [rbp-12], 50
@@ -51,6 +51,7 @@ _start:
 
 	call meow
 
+	mov byte [rbp-21], 10
 	mov rdi, [rbp-8]
 	mov rsi, [rbp-20]
 	call args

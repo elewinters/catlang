@@ -13,6 +13,8 @@ fn _start() {
 
 	syscall!(sys_write, stdout, "Hello, world!\n", 14);
 	meow();
+
+	let yeah: int8 = 10;
 	args(sys_write, stdout);
 	
 	syscall!(60, 0);
