@@ -115,7 +115,7 @@ pub fn ast(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 			}
 			/* macro/function calls */
 			Identifier(identifier) => {
-				let macro_or_function = if identifier.ends_with("!") {
+				let macro_or_function = if identifier.ends_with('!') {
 					"macro"
 				}
 				else {
