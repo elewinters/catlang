@@ -81,7 +81,7 @@ pub fn ast(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 						Operator(')') => {
 							match iter.next() {
 								Some(Operator('{')) => is_proto = false,
-								None => is_proto = true,
+								Some(Operator(';')) | None => is_proto = true,
 
 								Some(x) => return Err((format!("unexpected {} after operator ')'", token_to_string(x)), line))
 							}
