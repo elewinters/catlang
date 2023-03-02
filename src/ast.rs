@@ -46,14 +46,15 @@ pub fn ast(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 					_ => return Err((format!("in function definition of {function_name}, expected ( after the function name"), line))
 				}
 
-				/* add function arguments if they exist */
 				let mut arg_names: Vec<String> = Vec::new();
 				let mut arg_types: Vec<String> = Vec::new();
 
 				let mut is_proto: bool = false;
 
+				/* add function arguments if they exist */
 				while let Some(i) = iter.next() {
 					match i {
+						/* push arg_name: arg_type to vectors */
 						Identifier(varname) => {
 							match iter.next() {
 								Some(Operator(':')) => (),
@@ -66,6 +67,7 @@ pub fn ast(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 								_ => return Err((format!("expected a type after paramater name '{varname}' in function decleration of {function_name}"), line))
 							});
 
+							/* syntax error checks */
 							match iter.next() {
 								Some(Operator(',')) | Some(Operator(')')) => (),
 
@@ -73,7 +75,9 @@ pub fn ast(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 								_ => return Err((format!("expected an operator ',', operator ')' or operator '{{' after paramater '{varname}'"), line))
 							}
 						}
-
+						
+						/* determine when to stop */
+						/* stuff for determining whether it's a prototype only happens here */
 						Operator('{') => {
 							is_proto = false; 
 							break;
@@ -157,12 +161,12 @@ pub fn ast(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 
 				let mut arguments: Vec<&TokenType> = Vec::new();
 
-				#[allow(irrefutable_let_patterns)]
-				while let i = iter.next() {
+				/* iterate over tokens and push the arguments to 'arguments' vector */
+				while let Some(i) = iter.next() {
 					let token = match i {
-						Some(Operator(')')) => break,
-						Some(Operator(';')) | None => return Err((format!("expected a closing ) in call to {macro_or_function} {identifier}"), line)),
-						Some(x) => x
+						Operator(')') => break,
+						Operator(';') => return Err((format!("expected a closing ) in call to {macro_or_function} {identifier}"), line)),
+						x => x
 					};
 
 					match (token) {

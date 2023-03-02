@@ -37,9 +37,8 @@ pub fn token_get_value(token: &TokenType) -> String {
 	}
 }
 
-const KEYWORDS: [&str; 3] = [
+const KEYWORDS: [&str; 2] = [
 	"let", 
-	"extern", 
 	"fn"
 ];
 
