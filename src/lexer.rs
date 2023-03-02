@@ -72,10 +72,35 @@ pub fn print_tokens(input: &Vec<TokenType>) {
 
 pub fn lex(input: Vec<u8>) -> Vec<TokenType> {
 	let mut tokens: Vec<TokenType> = Vec::new();
-	let mut iter = input.iter();
-	
+	let mut iter = input.iter().peekable();
+
+	let mut in_comment = false;
+
 	while let Some(v) = iter.next() {
 		let v = *v as char;
+		
+		/* comment handling */
+		{
+			if (v == '/') {
+				if let Some(b'*') = iter.peek() {
+					in_comment = true;
+					iter.next();
+				}
+			}
+
+			if (v == '*') {
+				if let Some(b'/') = iter.peek() {
+					in_comment = false;
+					iter.next();
+
+					continue;
+				}
+			}
+
+			if (in_comment) {
+				continue;
+			}
+		}	
 
 		if (v == '\n') {
 			tokens.push(TokenType::Newline);

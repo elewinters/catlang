@@ -1,10 +1,11 @@
 section .data
-	L0: db `Hello, world!\n`, 0
-	L1: db `yass girl\n`, 0
-	L2: db `meow :3\n`, 0
-	L3: db `scripts/hello.txt`, 0
-	L4: db `hello world!`, 0
-	L5: db `scripts/hello.txt`, 0
+	L0: db `\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0`, 0
+	L1: db `Hello, world!\n`, 0
+	L2: db `yass girl\n`, 0
+	L3: db `meow :3\n`, 0
+	L4: db `scripts/hello.txt`, 0
+	L5: db `hello world!`, 0
+	L6: db `scripts/hello.txt`, 0
 section .text
 
 global print
@@ -36,8 +37,8 @@ exit:
 	pop rbp
 	ret
 
-global write
-write:
+global fwrite
+fwrite:
 	push rbp
 	mov rbp, rsp
 
@@ -65,11 +66,10 @@ write:
 	pop rbp
 	ret
 
-global read
-read:
+global fprint
+fprint:
 	push rbp
 	mov rbp, rsp
-	sub rsp, 24
 
 	mov qword [rbp-8], rdi
 	mov rax, 2
@@ -80,22 +80,20 @@ read:
 
 	mov qword [rbp-16], 0
 	mov qword [rbp-16], rax
-	mov qword [rbp-24], \0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0 
 	mov rax, 0
 	mov rdi, [rbp-16]
-	mov rsi, [rbp-24]
+	mov rsi, L0
 	mov rdx, 16
 	syscall
 
-	mov rdi, [rbp-24]
+	mov rdi, L0
 	mov rsi, 16
 	call print
-
 	mov rax, 3
 	mov rdi, [rbp-16]
 	syscall
 
-	leave
+	pop rbp
 	ret
 
 global _start
@@ -103,25 +101,25 @@ _start:
 	push rbp
 	mov rbp, rsp
 
-	mov rdi, L0
+	mov rdi, L1
 	mov rsi, 14
 	call print
 
-	mov rdi, L1
+	mov rdi, L2
 	mov rsi, 10
 	call print
 
-	mov rdi, L2
+	mov rdi, L3
 	mov rsi, 8
 	call print
 
-	mov rdi, L3
-	mov rsi, L4
+	mov rdi, L4
+	mov rsi, L5
 	mov rdx, 12
-	call write
+	call fwrite
 
-	mov rdi, L5
-	call read
+	mov rdi, L6
+	call fprint
 
 	mov rdi, 0
 	call exit
