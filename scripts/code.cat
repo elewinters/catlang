@@ -16,6 +16,6 @@ fn _start() {
 	print("hi :D\n", len);
 	meow();
 
-	let exit_code: int32 = 0;
+	let exit_code: int64 = 0;
 	syscall!(60, exit_code);
 }

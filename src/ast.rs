@@ -113,12 +113,19 @@ pub fn ast(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 				/* push everything to the AST */
 				ast.push(AstType::VariableDefinition(variable_name, variable_type, intializer_value));
 			}
-			/* builtin macro calls */
+			/* macro/function calls */
 			Identifier(identifier) => {
+				let macro_or_function = if identifier.ends_with("!") {
+					"macro"
+				}
+				else {
+					"function"
+				};
+
 				/* check for ( */
 				match iter.next() {
 					Some(Operator('(')) => (),
-					_ => return Err((format!("expected operator '(' after macro '{identifier}'"), line))
+					_ => return Err((format!("expected operator '(' after {macro_or_function} '{identifier}'"), line))
 				}
 
 				let mut arguments: Vec<&TokenType> = Vec::new();
@@ -127,18 +134,18 @@ pub fn ast(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 				while let i = iter.next() {
 					let token = match i {
 						Some(Operator(')')) => break,
-						Some(Operator(';')) | None => return Err((format!("expected a closing ) in call to macro {identifier}"), line)),
+						Some(Operator(';')) | None => return Err((format!("expected a closing ) in call to {macro_or_function} {identifier}"), line)),
 						Some(x) => x
 					};
 
 					match (token) {
 						StringLiteral(_) | IntLiteral(_) | Identifier(_) => arguments.push(token),
 						Operator(',') | Newline => (),
-						err => return Err((format!("unexpected {} in call to macro {identifier}", token_to_string(err)), line))
+						err => return Err((format!("unexpected {} in call to {macro_or_function} {identifier}", token_to_string(err)), line))
 					}
 				}
 
-				if (identifier.ends_with('!')) {
+				if (macro_or_function == "macro") {
 					ast.push(AstType::MacroCall(identifier, arguments));
 				}
 				else {
