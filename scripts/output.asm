@@ -38,7 +38,7 @@ global _start
 _start:
 	push rbp
 	mov rbp, rsp
-	sub rsp, 16
+	sub rsp, 32
 
 	mov qword [rbp-8], 1
 	mov qword [rbp-16], 1
@@ -48,14 +48,16 @@ _start:
 	mov rdx, 14
 	syscall
 
+	mov qword [rbp-24], 6
 	mov rdi, L2
-	mov rsi, 6
+	mov rsi, [rbp-24]
 	call print
 
 	call meow
 
+	mov qword [rbp-32], 0
 	mov rax, 60
-	mov rdi, 0
+	mov rdi, [rbp-32]
 	syscall
 
 	leave

@@ -12,8 +12,10 @@ fn _start() {
 
 	syscall!(sys_write, stdout, "Hello, world!\n", 14);
 	
-	print("hi :D\n", 6);
+	let len: int64 = 6;
+	print("hi :D\n", len);
 	meow();
 
-	syscall!(60, 0);
+	let exit_code: int32 = 0;
+	syscall!(60, exit_code);
 }

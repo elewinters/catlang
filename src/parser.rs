@@ -9,6 +9,11 @@ struct Function<'a> {
 	args: &'a(Vec<String>, Vec<String>)
 }
 
+struct Variable {
+	addr: String,
+	vartype: String
+}
+
 fn get_size_of_type(input: &str, line: i64) -> Result<(&'static str, i32), (String, i64)> {
 	match (input) {
 		"int8" => Ok(("byte", 1)),
@@ -53,7 +58,7 @@ fn add_variable(
 	stacksize: &mut i32,
 
 	textsect: &mut String,
-	local_variables: &mut HashMap<String, String>,
+	local_variables: &mut HashMap<String, Variable>,
 
 	name: &str, 
 	vartype: &str, 
@@ -68,7 +73,12 @@ fn add_variable(
 	if let Some(initval) = initval {
 		textsect.push_str(&format!("\tmov {word} {addr}, {initval}\n"));
 	}
-	local_variables.insert(name.to_string(), addr);
+
+	local_variables.insert(name.to_string(), Variable {
+		addr, 
+		vartype: vartype.to_owned() 
+	});
+
 	Ok(())
 }
 
@@ -81,7 +91,7 @@ pub fn parse(input: &[AstType]) -> Result<String, (String, i64)> {
 	let mut textsect = String::from("section .text\n\n");
 
 	/* key is the variable name, value is its address */
-	let mut local_variables: HashMap<String, String> = HashMap::new();
+	let mut local_variables: HashMap<String, Variable> = HashMap::new();
 	let mut functions: HashMap<String, Function> = HashMap::new(); 
 	
 	/* not even gonna bother explaining this */
@@ -137,7 +147,12 @@ pub fn parse(input: &[AstType]) -> Result<String, (String, i64)> {
 						StringLiteral(x) => resolve_string_literal(&mut datasect, x),
 						Identifier(varname) => { 
 							match local_variables.get(varname) {
-								Some(varaddr) => varaddr.to_owned(),
+								Some(var) => {
+									if (function.args.1[i] != var.vartype) {
+										return Err((format!("function '{name}' accepts type {} as paramater {} but the type of '{varname}' is {}", function.args.1[i], i + 1, var.vartype), line))
+									}
+									var.addr.clone()
+								},
 								None => return Err((format!("variable '{varname}' is not defined in the current scope"), line))
 							}
 						},
@@ -199,7 +214,12 @@ pub fn parse(input: &[AstType]) -> Result<String, (String, i64)> {
 						StringLiteral(x) => resolve_string_literal(&mut datasect, x),
 						Identifier(varname) => { 
 							match local_variables.get(varname) {
-								Some(varaddr) => varaddr.to_owned(),
+								Some(var) => {
+									if (var.vartype != "int64") {
+										return Err((format!("syscall! macro only accepts arguments of type int64, yet type of '{varname}' is {}", var.vartype), line));
+									}
+									var.addr.clone()
+								}
 								None => return Err((format!("variable '{varname}' is not defined in the current scope"), line))
 							}
 						},
