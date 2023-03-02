@@ -107,6 +107,8 @@ pub fn parse(input: &[AstType]) -> Result<String, (String, i64)> {
 			FunctionDefinition(name, args) => {
 				textsect.push_str(&format!("global {name}\n{name}:\n"));
 				textsect.push_str("\tpush rbp\n\tmov rbp, rsp\n\n");
+				
+				stack_subtraction_index = textsect.len() - 1;
 
 				/* add arguments to the stack */
 				for i in 0..args.0.len() {
@@ -121,7 +123,6 @@ pub fn parse(input: &[AstType]) -> Result<String, (String, i64)> {
 					)?;
 				}
 				
-				stack_subtraction_index = textsect.len() - 1;
 				functions.insert(name.to_string(), Function { args });
 			},
 			FunctionCall(name, args) => {

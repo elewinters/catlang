@@ -6,10 +6,36 @@ fn exit(exit_code: int64) {
 	syscall!(60, exit_code);
 }
 
+fn write(filename: int64, content: int64, content_len: int64) {
+	syscall!(2, filename, 65, 0644o);
+
+	let fd: int64 = 0;
+	asm!("mov qword [rbp-32], rax");
+
+	syscall!(1, fd, content, content_len);
+	syscall!(3, fd);
+}
+
+fn read(filename: int64) {
+	syscall!(2, filename, 0, 0644o);
+
+	let fd: int64 = 0;
+	asm!("mov qword [rbp-16], rax");
+
+	let buf: int64 = "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0 ";
+	syscall!(0, fd, buf, 16);
+	print(buf, 16);
+
+	syscall!(3, fd);
+}
+
 fn _start() {
 	print("Hello, world!\n", 14);
 	print("yass girl\n", 10);
 	print("meow :3\n", 8);
+
+	write("scripts/hello.txt", "hello world!", 12);
+	read("scripts/hello.txt");
 		
 	exit(0);
 }
