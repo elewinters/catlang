@@ -132,11 +132,11 @@ pub fn parse(input: &[AstType]) -> Result<String, (String, i64)> {
 
 				if (args.len() != function.args.0.len()) {
 					/* weird looking if statment is here so we dont produce an error message with broken english */
-					return Err((format!("function '{name}' accepts {} arguments but {} {} given", function.args.0.len(), args.len(), if (args.len() > 1) {
-						"were"
+					return Err((format!("function '{name}' accepts {} arguments but {} {} given", function.args.0.len(), args.len(), if (args.len() == 1) {
+						"was"
 					} 
 					else {
-						"was"
+						"were"
 					}), line))
 				}
 

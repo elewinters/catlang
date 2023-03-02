@@ -1,21 +1,15 @@
-fn meow() {
-	syscall!(1, 1, "meow\n", 5);
-}
-
 fn print(str: int64, len: int64) {
 	syscall!(1, 1, str, len);
 }
 
-fn _start() {
-	let sys_write: int64 = 1;
-	let stdout: int64 = 1;
-
-	syscall!(sys_write, stdout, "Hello, world!\n", 14);
-	
-	let len: int64 = 6;
-	print("hi :D\n", len);
-	meow();
-
-	let exit_code: int64 = 0;
+fn exit(exit_code: int64) {
 	syscall!(60, exit_code);
+}
+
+fn _start() {
+	print("Hello, world!\n", 14);
+	print("yass girl\n", 10);
+	print("meow :3\n", 8);
+		
+	exit(0);
 }
