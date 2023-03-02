@@ -70,7 +70,7 @@ pub fn ast(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 								Some(Operator(',')) | Some(Operator(')')) => (),
 
 								Some(Operator('{')) => return Err((format!("unexpected opening curly brace '{{' in paramater list of function definition of {function_name}, did you forget to close the parentheses of the argument list?"), line)),
-								_ => return Err((format!("expected a comma after paramater '{varname}'"), line))
+								_ => return Err((format!("expected an operator ',', operator ')' or operator '{{' after paramater '{varname}'"), line))
 							}
 						}
 
@@ -83,17 +83,17 @@ pub fn ast(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 								Some(Operator('{')) => is_proto = false,
 								Some(Operator(';')) | None => is_proto = true,
 
-								Some(x) => return Err((format!("unexpected {} after operator ')'", token_to_string(x)), line))
+								Some(x) => return Err((format!("expected either an operator '{{' or an operator ';' after operator ')', but got {} instead", token_to_string(x)), line))
 							}
 
 							break;
 						}
-						Operator(';') => {
+						Operator(';') | Newline => {
 							is_proto = true; 
 							break;
 						}
 
-						err => return Err((format!("expected either an operator ')', operator '{{' or identifier in function definition of '{function_name}', but got {} instead", token_to_string(err)), line))
+						err => return Err((format!("expected either an operator ')', operator '{{', operator ';', operator 'newline' or identifier in function definition of '{function_name}', but got {} instead", token_to_string(err)), line))
 					}
 				}
 				
