@@ -5,6 +5,8 @@ use crate::lexer::TokenType::*;
 pub enum AstType<'a> {
 	/* function name, tuple of vectors, first vector holds names, second one holds types */
 	FunctionDefinition(&'a str, (Vec<String>, Vec<String>)),
+	/* function name, vector of types that the function accepts */
+	FunctionPrototype(&'a str, Vec<String>),
 	/* variable name, type, and initializer value */
 	VariableDefinition(&'a str, &'a str, &'a str),
 	/* macro name, arguments */
@@ -48,6 +50,8 @@ pub fn ast(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 				let mut arg_names: Vec<String> = Vec::new();
 				let mut arg_types: Vec<String> = Vec::new();
 
+				let mut is_proto: bool = false;
+
 				while let Some(i) = iter.next() {
 					match i {
 						Identifier(varname) => {
@@ -70,12 +74,35 @@ pub fn ast(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 							}
 						}
 
-						Operator(')') | Operator('{') => break,
+						Operator('{') => {
+							is_proto = false; 
+							break;
+						},
+						Operator(')') => {
+							match iter.next() {
+								Some(Operator('{')) => is_proto = false,
+								None => is_proto = true,
+
+								Some(x) => return Err((format!("unexpected {} after operator ')'", token_to_string(x)), line))
+							}
+
+							break;
+						}
+						Operator(';') => {
+							is_proto = true; 
+							break;
+						}
+
 						err => return Err((format!("expected either an operator ')', operator '{{' or identifier in function definition of '{function_name}', but got {} instead", token_to_string(err)), line))
 					}
 				}
 				
-				ast.push(AstType::FunctionDefinition(function_name, (arg_names, arg_types)));
+				if (!is_proto) {
+					ast.push(AstType::FunctionDefinition(function_name, (arg_names, arg_types)));
+				}
+				else {
+					ast.push(AstType::FunctionPrototype(function_name, arg_types));
+				}
 			},
 			/* variable declerations */
 			Keyword(keyword) if keyword == "let" => {

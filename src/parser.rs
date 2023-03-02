@@ -6,7 +6,7 @@ use crate::lexer::{TokenType::*, token_to_string};
 
 /* this will have more fields in the future, like the return value */
 struct Function<'a> {
-	args: &'a(Vec<String>, Vec<String>)
+	arg_types: &'a Vec<String> /* types of paramaters, but not the names of the paramaters */
 }
 
 struct Variable {
@@ -123,17 +123,22 @@ pub fn parse(input: &[AstType]) -> Result<String, (String, i64)> {
 					)?;
 				}
 				
-				functions.insert(name.to_string(), Function { args });
+				functions.insert(name.to_string(), Function { arg_types: &args.1 });
 			},
+			FunctionPrototype(name, args) => {
+				textsect.push_str(&format!("extern {name}\n"));
+
+				functions.insert(name.to_string(), Function { arg_types: &args });
+			}
 			FunctionCall(name, args) => {
 				let function = match functions.get(*name) {
 					Some(x) => x,
 					None => return Err((format!("undefined function '{name}'"), line))
 				};
 
-				if (args.len() != function.args.0.len()) {
+				if (args.len() != function.arg_types.len()) {
 					/* weird looking if statment is here so we dont produce an error message with broken english */
-					return Err((format!("function '{name}' accepts {} arguments but {} {} given", function.args.0.len(), args.len(), if (args.len() == 1) {
+					return Err((format!("function '{name}' accepts {} arguments but {} {} given", function.arg_types.len(), args.len(), if (args.len() == 1) {
 						"was"
 					} 
 					else {
@@ -149,8 +154,8 @@ pub fn parse(input: &[AstType]) -> Result<String, (String, i64)> {
 						Identifier(varname) => { 
 							match local_variables.get(varname) {
 								Some(var) => {
-									if (function.args.1[i] != var.vartype) {
-										return Err((format!("function '{name}' accepts type {} as paramater {} but the type of '{varname}' is {}", function.args.1[i], i + 1, var.vartype), line))
+									if (function.arg_types[i] != var.vartype) {
+										return Err((format!("function '{name}' accepts type {} as paramater {} but the type of '{varname}' is {}", function.arg_types[i], i + 1, var.vartype), line))
 									}
 									var.addr.clone()
 								},
