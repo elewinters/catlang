@@ -16,10 +16,10 @@ struct Variable {
 
 fn get_size_of_type(input: &str, line: i64) -> Result<(&'static str, i32), (String, i64)> {
 	match (input) {
-		"int8" => Ok(("byte", 1)),
-		"int16" => Ok(("word", 2)),
-		"int32" => Ok(("dword", 4)),
-		"int64" => Ok(("qword", 8)),
+		"i8" => Ok(("byte", 1)),
+		"i16" => Ok(("word", 2)),
+		"i32" => Ok(("dword", 4)),
+		"i64" => Ok(("qword", 8)),
 		_ => return Err((format!("'{input}' is not a valid type"), line))
 	}
 } 
@@ -221,8 +221,8 @@ pub fn parse(input: &[AstType]) -> Result<String, (String, i64)> {
 						Identifier(varname) => { 
 							match local_variables.get(varname) {
 								Some(var) => {
-									if (var.vartype != "int64") {
-										return Err((format!("syscall! macro only accepts arguments of type int64, yet type of '{varname}' is {}", var.vartype), line));
+									if (var.vartype != "i64") {
+										return Err((format!("syscall! macro only accepts arguments of type i64, yet type of '{varname}' is {}", var.vartype), line));
 									}
 									var.addr.clone()
 								}

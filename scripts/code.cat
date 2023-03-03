@@ -1,10 +1,12 @@
-fn puts(str: int64);
-fn exit(exit_code: int64);
-fn printf(fmt: int64, num: int32);
+fn puts(str: i64);
+fn exit(exit_code: i64);
+fn printf(fmt: i64, num: i64);
 
 fn main() {
-	puts("Hello, world!");
-	printf("%d\n", 5);
+	let num: i64 = 5;
+
+	asm!("xor rax, rax");
+	printf("%ld\n", num);
 	
 	exit(0);
 }
