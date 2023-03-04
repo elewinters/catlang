@@ -3,19 +3,47 @@ section .data
 section .text
 
 extern puts
-extern exit
 extern printf
+extern putchar
+extern exit
+global myputchar
+myputchar:
+	push rbp
+	mov rbp, rsp
+	sub rsp, 1
+
+	mov byte [rbp-1], dil
+	movsx edi, byte [rbp-1]
+	call putchar
+
+	leave
+	ret
+
 global main
 main:
 	push rbp
 	mov rbp, rsp
-	sub rsp, 4
+	sub rsp, 6
 
 	mov dword [rbp-4], 5
 	xor rax, rax
 	mov rdi, L0
-	mov rsi, [rbp-4]
+	mov esi, dword [rbp-4]
 	call printf
+
+	mov byte [rbp-5], 65
+	mov byte [rbp-6], 10
+	movsx edi, byte [rbp-5]
+	call putchar
+
+	movsx edi, byte [rbp-6]
+	call putchar
+
+	movsx edi, byte [rbp-5]
+	call myputchar
+
+	movsx edi, byte [rbp-6]
+	call myputchar
 
 	mov rdi, 0
 	call exit

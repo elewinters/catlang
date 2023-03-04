@@ -24,17 +24,90 @@ fn get_size_of_type(input: &str, line: i64) -> Result<(&'static str, i32), (Stri
 	}
 } 
 
-/* returns a register in system V amd64 calling convention, the default for most x86_64 compilers */
-fn get_register_from_argc(argument_count: usize, line: i64) -> Result<&'static str, (String, i64)> {
-	match (argument_count) {
-		0 => Ok("rdi"),
-		1 => Ok("rsi"),
-		2 => Ok("rdx"),
-		3 => Ok("rcx"),
-		4 => Ok("r8"),
-		5 => Ok("r9"),
-		_ => Err((String::from("too many arguments to function, functions can only up to 6 arguments at the moment"), line))
-	}
+fn get_register_call(argument_count: usize, argword: &str, line: i64) -> Result<&'static str, (String, i64)> {
+    match (argument_count, argword) {
+        /* edi/rdi */
+        (0, "byte") | (0, "word") | (0, "dword") => Ok("edi"),
+        (0, "qword") => Ok("rdi"),
+
+        /* esi/rsi */
+        (1, "byte") | (1, "word") | (1, "dword") => Ok("esi"),
+        (1, "qword") => Ok("rsi"),
+
+        /* edx/rdx */
+        (2, "byte") | (2, "word") | (2, "dword") => Ok("edx"),
+        (2, "qword") => Ok("rdx"),
+
+        /* ecx/rcx */
+        (3, "byte") | (3, "word") | (3, "dword") => Ok("ecx"),
+        (3, "qword") => Ok("rcx"),
+        
+        /* r8 */
+        (4, "byte") | (4, "word") |(4, "dword") => Ok("r8d"),
+        (4, "qword") => Ok("r8"),
+
+        /* r9 */
+        (5, "byte") | (5, "word") | (5, "dword") => Ok("r9d"),
+        (5, "qword") => Ok("r9"),
+
+        (c, t) => {
+            if (c > 5) {
+                return Err((String::from("too many arguments to function, functions can only up to 6 arguments at the moment"), line));
+            }
+            else {
+                return Err((format!("'{t}' is not a valid word"), line));
+            }
+        }
+    }
+}
+
+fn get_register_definition(argument_count: usize, argword: &str, line: i64) -> Result<&'static str, (String, i64)> {
+    match (argument_count, argword) {
+        /* edi/rdi */
+        (0, "byte") => Ok("dil"),
+        (0, "word") => Ok("di"), 
+        (0, "dword") => Ok("edi"),
+        (0, "qword") => Ok("rdi"),
+
+        /* esi/rsi */
+        (1, "byte") => Ok("sil"), 
+        (1, "word") => Ok("si"),
+        (1, "dword") => Ok("esi"),
+        (1, "qword") => Ok("rsi"),
+
+        /* edx/rdx */
+        (2, "byte") => Ok("dl"),
+        (2, "word") => Ok("dx"),
+        (2, "dword") => Ok("edx"),
+        (2, "qword") => Ok("rdx"),
+
+        /* ecx/rcx */
+        (3, "byte") => Ok("cl"),
+        (3, "word") => Ok("cx"),
+        (3, "dword") => Ok("ecx"),
+        (3, "qword") => Ok("rcx"),
+        
+        /* r8 */
+        (4, "byte") => Ok("r8b"),
+        (4, "word") => Ok("r8w"),
+        (4, "dword") => Ok("r8d"),
+        (4, "qword") => Ok("r8"),
+
+        /* r9 */
+        (5, "byte") => Ok("r9b"),
+        (5, "word") => Ok("r9w"),
+        (5, "dword") => Ok("r9d"),
+        (5, "qword") => Ok("r9"),
+
+        (c, t) => {
+            if (c > 5) {
+                return Err((String::from("too many arguments to function, functions can only up to 6 arguments at the moment"), line));
+            }
+            else {
+                return Err((format!("'{t}' is not a valid word"), line));
+            }
+        }
+    }
 }
 
 /* given a string, this function will insert that string into the datasection */
@@ -112,6 +185,7 @@ pub fn parse(input: &[AstType]) -> Result<String, (String, i64)> {
 
 				/* add arguments to the stack */
 				for i in 0..args.0.len() {
+					let (word, _) = get_size_of_type(&args.1[i], line)?;
 					add_variable(
 						line,
 	
@@ -119,7 +193,7 @@ pub fn parse(input: &[AstType]) -> Result<String, (String, i64)> {
 						&mut textsect, 
 						&mut local_variables,
 	
-						&args.0[i], &args.1[i], Some(get_register_from_argc(i, line)?)
+						&args.0[i], &args.1[i], Some(get_register_definition(i, word, line)?)
 					)?;
 				}
 				
@@ -148,16 +222,36 @@ pub fn parse(input: &[AstType]) -> Result<String, (String, i64)> {
 
 				/* insert arguments to their respective registers */
 				for (i, v) in args.iter().enumerate() {
-					let v = match (v) {
-						IntLiteral(x) => x.to_owned(),
-						StringLiteral(x) => resolve_string_literal(&mut datasect, x),
+					match (v) {
+						IntLiteral(x) => {
+							let (word, _) = get_size_of_type(&function.arg_types[i], line)?;
+							let register = get_register_call(i, word, line)?;
+
+							textsect.push_str(&format!("\tmov {register}, {x}\n"));
+						},
+						StringLiteral(x) => {
+							let register = get_register_call(i, "qword", line)?;
+							let identifier = resolve_string_literal(&mut datasect, x);
+
+							textsect.push_str(&format!("\tmov {register}, {identifier}\n"));
+						},
 						Identifier(varname) => { 
 							match local_variables.get(varname) {
 								Some(var) => {
 									if (function.arg_types[i] != var.vartype) {
 										return Err((format!("function '{name}' accepts type {} as paramater {} but the type of '{varname}' is {}", function.arg_types[i], i + 1, var.vartype), line))
 									}
-									var.addr.clone()
+
+									let (word, _) = get_size_of_type(&var.vartype, line)?;
+									let register = get_register_call(i, word, line)?;
+
+									if (word == "dword" || word == "qword") {
+										textsect.push_str(&format!("\tmov {register}, {word} {}\n", var.addr));
+									}
+									else {
+										let register32 = get_register_call(i, "dword", line)?;
+										textsect.push_str(&format!("\tmovsx {register32}, {word} {}\n", var.addr));
+									}
 								},
 								None => return Err((format!("variable '{varname}' is not defined in the current scope"), line))
 							}
@@ -165,8 +259,6 @@ pub fn parse(input: &[AstType]) -> Result<String, (String, i64)> {
 
 						err => return Err((format!("expected either an int literal, string literal or identifier in call to function '{name}', but got {}", token_to_string(err)), line))
 					};
-
-					textsect.push_str(&format!("\tmov {}, {v}\n", get_register_from_argc(i, line)?));
 				}
 				
 				textsect.push_str(&format!("\tcall {name}\n\n"));

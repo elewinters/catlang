@@ -1,0 +1,36 @@
+fn puts(str: i64);
+fn printf();
+fn exit(exit_code: i64);
+fn putchar(a: i8);
+
+fn print(str: i64, len: i8) {
+	asm!("mov rax, 1");
+	asm!("mov rdi, 1");
+	asm!("mov rsi, [rbp-8]");
+	asm!("movzx rdx, byte [rbp-9]");
+	asm!("syscall");
+
+	puts("%hhd\n");
+	asm!("mov rdi, L0");
+	asm!("movzx rsi, byte [rbp-9]");
+
+	asm!("mov rax, 0");
+	asm!("call printf");
+}
+
+fn main() {
+	print("Hello, world!\n im like what the actual fuck!!!!!!!!!!!!!!!!!!!! aaaaa\n yes g", 14);
+
+	let A: i8 = 65;
+	let new_line: i8 = 10;
+
+	/* print A */
+	asm!("movzx edi, byte [rbp-1]");
+	asm!("call putchar");
+
+	/* print newline */
+	asm!("movzx edi, byte [rbp-2]");
+	asm!("call putchar");
+
+	exit(0);
+}

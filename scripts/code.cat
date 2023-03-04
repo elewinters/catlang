@@ -1,12 +1,26 @@
 fn puts(str: i64);
+fn printf(fmt: i64, num: i32);
+fn putchar(c: i8);
 fn exit(exit_code: i64);
-fn printf(fmt: i64, num: i64);
+
+fn myputchar(c: i8) {
+	putchar(c);
+}
 
 fn main() {
-	let num: i64 = 5;
+	let num: i32 = 5;
 
 	asm!("xor rax, rax");
-	printf("%ld\n", num);
-	
+	printf("%d\n", num);
+
+	let A: i8 = 65
+	let n: i8 = 10;
+
+	putchar(A);
+	putchar(n);
+
+	myputchar(A);
+	myputchar(n);
+
 	exit(0);
 }
