@@ -1,5 +1,6 @@
 use crate::lexer::{TokenType, token_to_string};
 use crate::lexer::TokenType::*;
+use crate::expressions;
 
 #[derive(Debug)]
 pub enum AstType<'a> {
@@ -8,7 +9,7 @@ pub enum AstType<'a> {
 	/* function name, vector of types that the function accepts */
 	FunctionPrototype(&'a str, Vec<String>),
 	/* variable name, type, and initializer value */
-	VariableDefinition(&'a str, &'a str, &'a str),
+	VariableDefinition(&'a str, &'a str, Expression),
 	/* macro name, arguments */
 	MacroCall(&'a str, Vec<&'a TokenType>),
 	/* function name, arguments */
@@ -17,6 +18,13 @@ pub enum AstType<'a> {
 	ScopeEnd,
 	/* for counting the line number in parser.rs */
 	Newline
+}
+
+#[derive(Debug)]
+pub enum Expression {
+	NumericalExpression(String),
+	StringExpression(String),
+	FunctionCall(String, Vec<Expression>),
 }
 
 pub fn ast(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
@@ -135,11 +143,7 @@ pub fn ast(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 				};
 
 				/* get initializer value */
-				let intializer_value = match iter.next() {
-					Some(IntLiteral(x)) => x,
-					Some(StringLiteral(x)) => x,
-					_ => return Err(("expected either an int literal or string literal in variable intializer after '=' operator".to_owned(), line))
-				};
+				let intializer_value = expressions::eval_expression(&mut iter, line)?;
 
 				/* push everything to the AST */
 				ast.push(AstType::VariableDefinition(variable_name, variable_type, intializer_value));

@@ -1,5 +1,6 @@
 section .data
-	L0: db `%d\n`, 0
+	L0: db `%d: %c\n`, 0
+	L1: db `Hello, world!`, 0
 section .text
 
 extern puts
@@ -23,12 +24,13 @@ global main
 main:
 	push rbp
 	mov rbp, rsp
-	sub rsp, 6
+	sub rsp, 14
 
-	mov dword [rbp-4], 5
+	mov dword [rbp-4], 5+5
 	xor rax, rax
 	mov rdi, L0
 	mov esi, dword [rbp-4]
+	mov edx, 67
 	call printf
 
 	mov byte [rbp-5], 65
@@ -44,6 +46,16 @@ main:
 
 	movsx edi, byte [rbp-6]
 	call myputchar
+
+	mov edi, 66
+	call putchar
+
+	mov edi, 10
+	call putchar
+
+	mov qword [rbp-14], L1
+	mov rdi, qword [rbp-14]
+	call puts
 
 	mov rdi, 0
 	call exit

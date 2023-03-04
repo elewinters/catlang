@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use crate::ast::AstType;
 use crate::ast::AstType::*;
+use crate::ast::Expression;
 use crate::lexer::{TokenType::*, token_to_string};
 
 /* this will have more fields in the future, like the return value */
@@ -204,7 +205,7 @@ pub fn parse(input: &[AstType]) -> Result<String, (String, i64)> {
 
 				functions.insert(name.to_string(), Function { arg_types: &args });
 			}
-			FunctionCall(name, args) => {
+			AstType::FunctionCall(name, args) => {
 				let function = match functions.get(*name) {
 					Some(x) => x,
 					None => return Err((format!("undefined function '{name}'"), line))
@@ -286,6 +287,12 @@ pub fn parse(input: &[AstType]) -> Result<String, (String, i64)> {
 			},
 			/* variable stuffs */
 			VariableDefinition(name, vartype, initval) => {
+				let initializer = match (initval) {
+					Expression::NumericalExpression(x) => x.to_string(),
+					Expression::StringExpression(x) => resolve_string_literal(&mut datasect, &x),
+					Expression::FunctionCall(_, _) => todo!()
+				};
+
 				add_variable(
 					line,
 
@@ -293,7 +300,7 @@ pub fn parse(input: &[AstType]) -> Result<String, (String, i64)> {
 					&mut textsect, 
 					&mut local_variables,
 
-					name, vartype, Some(initval)
+					name, vartype, Some(&initializer)
 				)?;
 			},
 			/* macro stuffs */
