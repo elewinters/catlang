@@ -36,7 +36,9 @@ pub fn ast(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 			},
 			/* scope end */
 			Operator('}') => ast.push(AstType::ScopeEnd),
-			/* function definitions */
+			/* ---------------------------- */
+			/*     function definitions     */
+			/* ---------------------------- */
 			Keyword(keyword) if keyword == "fn" => {
 				let function_name = match iter.next() {
 					Some(Identifier(x)) => x,
@@ -111,7 +113,9 @@ pub fn ast(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 					ast.push(AstType::FunctionPrototype(function_name, arg_types));
 				}
 			},
-			/* variable declerations */
+			/* --------------------------- */
+			/*    variable declerations    */
+			/* --------------------------- */
 			Keyword(keyword) if keyword == "let" => {
 				/* get variable name */
 				let variable_name = match iter.next() {
@@ -146,7 +150,9 @@ pub fn ast(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 				/* push everything to the AST */
 				ast.push(AstType::VariableDefinition(variable_name, variable_type, intializer_value));
 			}
-			/* macro/function calls */
+			/* ---------------------------- */
+			/*    function/macro calling    */
+			/* ---------------------------= */
 			Identifier(identifier) => {
 				let macro_or_function = if identifier.ends_with('!') {
 					"macro"
