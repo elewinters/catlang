@@ -2,8 +2,7 @@ use std::collections::HashMap;
 
 use crate::ast::AstType;
 use crate::ast::AstType::*;
-use crate::ast::Expression;
-use crate::lexer::{TokenType::*, token_to_string};
+use crate::expressions::{*, Expression::*};
 
 /* this will have more fields in the future, like the return value */
 struct Function<'a> {
@@ -224,19 +223,19 @@ pub fn parse(input: &[AstType]) -> Result<String, (String, i64)> {
 				/* insert arguments to their respective registers */
 				for (i, v) in args.iter().enumerate() {
 					match (v) {
-						IntLiteral(x) => {
+						NumericalExpression(x) => {
 							let (word, _) = get_size_of_type(&function.arg_types[i], line)?;
 							let register = get_register_call(i, word, line)?;
 
 							textsect.push_str(&format!("\tmov {register}, {x}\n"));
 						},
-						StringLiteral(x) => {
+						StringExpression(x) => {
 							let register = get_register_call(i, "qword", line)?;
 							let identifier = resolve_string_literal(&mut datasect, x);
 
 							textsect.push_str(&format!("\tmov {register}, {identifier}\n"));
 						},
-						Identifier(varname) => { 
+						IdentifierExpression(varname) => { 
 							match local_variables.get(varname) {
 								Some(var) => {
 									if (function.arg_types[i] != var.vartype) {
@@ -258,7 +257,7 @@ pub fn parse(input: &[AstType]) -> Result<String, (String, i64)> {
 							}
 						},
 
-						err => return Err((format!("expected either an int literal, string literal or identifier in call to function '{name}', but got {}", token_to_string(err)), line))
+						err => return Err((format!("expected either an int literal, string literal or identifier in call to function '{name}', but got {}", expression_to_string(&err)), line))
 					};
 				}
 				
@@ -288,8 +287,9 @@ pub fn parse(input: &[AstType]) -> Result<String, (String, i64)> {
 			/* variable stuffs */
 			VariableDefinition(name, vartype, initval) => {
 				let initializer = match (initval) {
-					Expression::NumericalExpression(x) => x.to_string(),
-					Expression::StringExpression(x) => resolve_string_literal(&mut datasect, &x),
+					NumericalExpression(x) => x.to_string(),
+					StringExpression(x) => resolve_string_literal(&mut datasect, &x),
+					IdentifierExpression(_) => todo!(),
 					Expression::FunctionCall(_, _) => todo!()
 				};
 
@@ -305,9 +305,9 @@ pub fn parse(input: &[AstType]) -> Result<String, (String, i64)> {
 			},
 			/* macro stuffs */
 			MacroCall("asm!", args) => {
-				let instruction = match args[0] {
-					StringLiteral(ref x) => x,
-					err => return Err((format!("expected token type to be a string literal, not {}", token_to_string(err)), line))
+				let instruction = match &args[0] {
+					StringExpression(ref x) => x,
+					err => return Err((format!("expected token type to be a string literal, not {}", expression_to_string(&err)), line))
 				};
 
 				textsect.push_str(&format!("\t{}\n", instruction));
@@ -315,9 +315,9 @@ pub fn parse(input: &[AstType]) -> Result<String, (String, i64)> {
 			MacroCall("syscall!", args) => {
 				for (i, v) in args.iter().enumerate() {
 					let v = match (v) {
-						IntLiteral(x) => x.to_owned(),
-						StringLiteral(x) => resolve_string_literal(&mut datasect, x),
-						Identifier(varname) => { 
+						NumericalExpression(x) => x.to_owned(),
+						StringExpression(x) => resolve_string_literal(&mut datasect, x),
+						IdentifierExpression(varname) => { 
 							match local_variables.get(varname) {
 								Some(var) => {
 									if (var.vartype != "i64") {
@@ -329,7 +329,7 @@ pub fn parse(input: &[AstType]) -> Result<String, (String, i64)> {
 							}
 						},
 
-						err => return Err((format!("expected either an int literal, string literal or identifier in call to macro syscall!, but got {}", token_to_string(err)), line))
+						err => return Err((format!("expected either an int literal, string literal or identifier in call to macro syscall!, but got {}", expression_to_string(&err)), line))
 					};
 
 					match i {

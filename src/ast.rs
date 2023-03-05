@@ -1,6 +1,7 @@
 use crate::lexer::{TokenType, token_to_string};
 use crate::lexer::TokenType::*;
 use crate::expressions;
+use crate::expressions::Expression;
 
 #[derive(Debug)]
 pub enum AstType<'a> {
@@ -11,20 +12,13 @@ pub enum AstType<'a> {
 	/* variable name, type, and initializer value */
 	VariableDefinition(&'a str, &'a str, Expression),
 	/* macro name, arguments */
-	MacroCall(&'a str, Vec<&'a TokenType>),
+	MacroCall(&'a str, Vec<Expression>),
 	/* function name, arguments */
-	FunctionCall(&'a str, Vec<&'a TokenType>),
+	FunctionCall(&'a str, Vec<Expression>),
 	/* this is so that functions know when they end */
 	ScopeEnd,
 	/* for counting the line number in parser.rs */
 	Newline
-}
-
-#[derive(Debug)]
-pub enum Expression {
-	NumericalExpression(String),
-	StringExpression(String),
-	FunctionCall(String, Vec<Expression>),
 }
 
 pub fn ast(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
@@ -143,7 +137,10 @@ pub fn ast(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 				};
 
 				/* get initializer value */
-				let intializer_value = expressions::eval_expression(&mut iter, line)?;
+				let intializer_value = expressions::eval_expression(match iter.next() {
+					Some(x) => x,
+					None => return Err(("expected an initializer value in variable decleration".to_owned(), line))
+				}, &mut iter, line)?;
 
 				/* push everything to the AST */
 				ast.push(AstType::VariableDefinition(variable_name, variable_type, intializer_value));
@@ -163,19 +160,18 @@ pub fn ast(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 					_ => return Err((format!("expected operator '(' after {macro_or_function} '{identifier}'"), line))
 				}
 
-				let mut arguments: Vec<&TokenType> = Vec::new();
+				let mut arguments: Vec<Expression> = Vec::new();
 
 				/* iterate over tokens and push the arguments to 'arguments' vector */
 				while let Some(i) = iter.next() {
-					let token = match i {
-						Operator(')') => break,
-						Operator(';') => return Err((format!("expected a closing ) in call to {macro_or_function} {identifier}"), line)),
-						x => x
-					};
-
-					match (token) {
-						StringLiteral(_) | IntLiteral(_) | Identifier(_) => arguments.push(token),
+					match (i) {						
+						StringLiteral(_) | IntLiteral(_) | Identifier(_) => arguments.push(expressions::eval_expression(i, &mut iter, line)?),
+						
 						Operator(',') | Newline => (),
+
+						Operator(';') => break,
+						Operator(')') => break,
+
 						err => return Err((format!("unexpected {} in call to {macro_or_function} {identifier}", token_to_string(err)), line))
 					}
 				}

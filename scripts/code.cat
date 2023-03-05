@@ -8,12 +8,13 @@ fn myputchar(c: i8) {
 }
 
 fn main() {
-	let num: i32 = 5 + 5;
+	let num: i32 = 12/3;
 
 	asm!("xor rax, rax");
-	printf("%d: %c\n", num, 67);
 
-	let A: i8 = 65
+	printf("%d: %c\n", num, 67 + 3);
+
+	let A: i8 = 65;
 	let n: i8 = 10;
 
 	putchar(A);
@@ -22,7 +23,7 @@ fn main() {
 	myputchar(A);
 	myputchar(n);
 
-	putchar(66);
+	putchar(66 + 5);
 	putchar(10);
 
 	let string: i64 = "Hello, world!";

@@ -26,11 +26,11 @@ main:
 	mov rbp, rsp
 	sub rsp, 14
 
-	mov dword [rbp-4], 5+5
+	mov dword [rbp-4], 12/3
 	xor rax, rax
 	mov rdi, L0
 	mov esi, dword [rbp-4]
-	mov edx, 67
+	mov edx, 67+3
 	call printf
 
 	mov byte [rbp-5], 65
@@ -47,7 +47,7 @@ main:
 	movsx edi, byte [rbp-6]
 	call myputchar
 
-	mov edi, 66
+	mov edi, 66+5
 	call putchar
 
 	mov edi, 10
