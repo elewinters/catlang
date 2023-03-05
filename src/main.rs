@@ -6,7 +6,7 @@ use std::process::Command;
 mod options;
 mod lexer;
 mod ast;
-mod parser;
+mod code_generation;
 
 macro_rules! exit {
 	($fmt:expr) => {
@@ -80,7 +80,7 @@ fn main() {
 	/* -------------------------------------------- */
 	/*  parse AST and generate the assembly output  */
 	/* -------------------------------------------- */
-	let assembly_output = match parser::parse(&ast) {
+	let assembly_output = match code_generation::generate(&ast) {
 		Ok(x) => x,
 		Err((err, line)) => exit!(format!("[line {line}] {}", err))
 	};

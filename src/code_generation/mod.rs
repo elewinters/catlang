@@ -64,7 +64,7 @@ fn add_variable(
 }
 
 /* returns the assembly output on success, returns a string containing error information on failure */
-pub fn parse(input: &[AstType]) -> Result<String, (String, i64)> {
+pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 	let mut line: i64 = 1;
 	let iter = input.iter();
 
