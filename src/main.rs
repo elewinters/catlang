@@ -5,7 +5,6 @@ use std::process::Command;
 
 mod options;
 mod lexer;
-mod expressions;
 mod ast;
 mod parser;
 

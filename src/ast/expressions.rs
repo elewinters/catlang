@@ -1,6 +1,5 @@
-use crate::lexer::{self, token_to_string};
-use crate::lexer::TokenType;
-use crate::lexer::TokenType::*;
+use crate::lexer;
+use crate::lexer::TokenType::{self, *};
 
 #[derive(Debug)]
 pub enum Expression {
@@ -26,7 +25,7 @@ pub fn eval_expression(token: &TokenType, iter: &mut core::slice::Iter<TokenType
 			let mut expr = String::new();
 			expr.push_str(x);
 
-			while let Some(x) = iter.next() {
+			for x in iter {
 				match (x) {
 					Operator(';') | Operator(',') | Operator(')') => break,
 
@@ -41,6 +40,6 @@ pub fn eval_expression(token: &TokenType, iter: &mut core::slice::Iter<TokenType
 		Identifier(x) => Ok(Expression::Expression(x.to_owned())),
 		StringLiteral(x) => Ok(Expression::StringExpression(x.to_owned())),
 
-		err => return Err((format!("expected either an int literal or string literal in expression evaulation, but got {} instead", token_to_string(err)), line)),
+		err => return Err((format!("expected either an int literal or string literal in expression evaulation, but got {} instead", lexer::token_to_string(err)), line)),
 	}
 }

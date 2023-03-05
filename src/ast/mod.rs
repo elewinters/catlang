@@ -1,7 +1,8 @@
-use crate::lexer::{TokenType, token_to_string};
-use crate::lexer::TokenType::*;
-use crate::expressions;
-use crate::expressions::Expression;
+use crate::lexer;
+use crate::lexer::TokenType::{self, *};
+
+pub mod expressions;
+use expressions::Expression;
 
 #[derive(Debug)]
 pub enum AstType<'a> {
@@ -89,7 +90,7 @@ pub fn ast(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 								Some(Operator('{')) => is_proto = false,
 								Some(Operator(';')) | None => is_proto = true,
 
-								Some(x) => return Err((format!("expected either an operator '{{' or an operator ';' after operator ')', but got {} instead", token_to_string(x)), line))
+								Some(x) => return Err((format!("expected either an operator '{{' or an operator ';' after operator ')', but got {} instead", lexer::token_to_string(x)), line))
 							}
 
 							break;
@@ -99,7 +100,7 @@ pub fn ast(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 							break;
 						}
 
-						err => return Err((format!("expected either an operator ')', operator '{{', operator ';', operator 'newline' or identifier in function definition of '{function_name}', but got {} instead", token_to_string(err)), line))
+						err => return Err((format!("expected either an operator ')', operator '{{', operator ';', operator 'newline' or identifier in function definition of '{function_name}', but got {} instead", lexer::token_to_string(err)), line))
 					}
 				}
 				
@@ -172,7 +173,7 @@ pub fn ast(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 						Operator(';') => break,
 						Operator(')') => break,
 
-						err => return Err((format!("unexpected {} in call to {macro_or_function} {identifier}", token_to_string(err)), line))
+						err => return Err((format!("unexpected {} in call to {macro_or_function} {identifier}", lexer::token_to_string(err)), line))
 					}
 				}
 
