@@ -110,6 +110,17 @@ fn get_register_definition(argument_count: usize, argword: &str, line: i64) -> R
     }
 }
 
+fn get_accumulator(vartype: &str) -> &'static str {
+	match vartype {
+		"byte" => "al",
+		"word" => "ax",
+		"dword" => "eax",
+		"qword" => "rax",
+
+		_ => "eax"
+	}
+}
+
 /* given a string, this function will insert that string into the datasection */
 /* and return the identifier for it (like L0, L1, etc...) */
 fn resolve_string_literal(datasect: &mut String, literal: &str) -> String {
@@ -235,7 +246,7 @@ pub fn parse(input: &[AstType]) -> Result<String, (String, i64)> {
 
 							textsect.push_str(&format!("\tmov {register}, {identifier}\n"));
 						},
-						IdentifierExpression(varname) => { 
+						Expression(varname) => { 
 							match local_variables.get(varname) {
 								Some(var) => {
 									if (function.arg_types[i] != var.vartype) {
@@ -289,8 +300,27 @@ pub fn parse(input: &[AstType]) -> Result<String, (String, i64)> {
 				let initializer = match (initval) {
 					NumericalExpression(x) => x.to_string(),
 					StringExpression(x) => resolve_string_literal(&mut datasect, &x),
-					IdentifierExpression(_) => todo!(),
-					Expression::FunctionCall(_, _) => todo!()
+					Expression(varname) => {
+						/* we move the variable to a temporary register and then pass that into add_variable */
+						/* we have to use a temp register because we can't mov a memory location to another memory location obv */
+						let var = match local_variables.get(varname) {
+							Some(x) => x,
+							None => return Err((format!("attempted to create variable with initializer value of variable '{varname}', but such variable does not exist"), line))
+						};
+
+						/* mismatch in types */
+						if (var.vartype != *vartype) {
+							return Err((format!("mismatch of types in variable decleration of '{name}', type of '{name}' is '{vartype}', yet the type that its being assigned to is the value of the variable '{varname}', which is of type '{}'", var.vartype), line));
+						}
+
+						let (word, _) = get_size_of_type(&var.vartype, line)?;
+						let register = get_accumulator(word);
+
+						textsect.push_str(&format!("\tmov {register}, {word} {}\n", var.addr));
+						
+						register.to_owned()
+					},
+					FunctionCallExpression(_, _) => todo!()
 				};
 
 				add_variable(
@@ -317,7 +347,7 @@ pub fn parse(input: &[AstType]) -> Result<String, (String, i64)> {
 					let v = match (v) {
 						NumericalExpression(x) => x.to_owned(),
 						StringExpression(x) => resolve_string_literal(&mut datasect, x),
-						IdentifierExpression(varname) => { 
+						Expression(varname) => { 
 							match local_variables.get(varname) {
 								Some(var) => {
 									if (var.vartype != "i64") {

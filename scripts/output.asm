@@ -24,7 +24,7 @@ global main
 main:
 	push rbp
 	mov rbp, rsp
-	sub rsp, 14
+	sub rsp, 15
 
 	mov dword [rbp-4], 12/3
 	xor rax, rax
@@ -47,14 +47,22 @@ main:
 	movsx edi, byte [rbp-6]
 	call myputchar
 
+	mov al, byte [rbp-5]
+	mov byte [rbp-7], al
+	movsx edi, byte [rbp-7]
+	call putchar
+
+	movsx edi, byte [rbp-6]
+	call putchar
+
 	mov edi, 66+5
 	call putchar
 
 	mov edi, 10
 	call putchar
 
-	mov qword [rbp-14], L1
-	mov rdi, qword [rbp-14]
+	mov qword [rbp-15], L1
+	mov rdi, qword [rbp-15]
 	call puts
 
 	mov rdi, 0

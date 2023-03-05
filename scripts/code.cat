@@ -23,6 +23,11 @@ fn main() {
 	myputchar(A);
 	myputchar(n);
 
+	let new_A: i8 = A;
+
+	putchar(new_A);
+	putchar(n);
+
 	putchar(66 + 5);
 	putchar(10);
 

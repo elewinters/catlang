@@ -6,17 +6,17 @@ use crate::lexer::TokenType::*;
 pub enum Expression {
 	NumericalExpression(String),
 	StringExpression(String),
-	IdentifierExpression(String),
-	FunctionCall(String, Vec<Expression>),
+	Expression(String), /* essentially an "IdentifierExpression" for now */
+	FunctionCallExpression(String, Vec<Expression>),
 }
 
 pub fn expression_to_string(token: &Expression) -> String {
 	match token {
 		Expression::NumericalExpression(x) => format!("numerical expression '{x}'"),
-		Expression::IdentifierExpression(x) => format!("expression '{x}'"),
+		Expression::Expression(x) => format!("expression '{x}'"),
 
 		Expression::StringExpression(x) => format!("string '{x}'"),
-		Expression::FunctionCall(name, _) => format!("function call to '{name}'"),
+		Expression::FunctionCallExpression(name, _) => format!("function call to '{name}'"),
 	}
 }
 
@@ -38,7 +38,7 @@ pub fn eval_expression(token: &TokenType, iter: &mut core::slice::Iter<TokenType
 
 			Ok(Expression::NumericalExpression(expr))
 		},
-		Identifier(x) => Ok(Expression::IdentifierExpression(x.to_owned())),
+		Identifier(x) => Ok(Expression::Expression(x.to_owned())),
 		StringLiteral(x) => Ok(Expression::StringExpression(x.to_owned())),
 
 		err => return Err((format!("expected either an int literal or string literal in expression evaulation, but got {} instead", token_to_string(err)), line)),
