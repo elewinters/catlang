@@ -1,38 +1,19 @@
 fn puts(str: i64);
-fn printf(fmt: i64, num: i32, c: i8);
+fn printf(fmt: i64, num: i32);
 fn putchar(c: i8);
 fn exit(exit_code: i64);
 
-fn myputchar(c: i8) {
-	putchar(c);
-}
+fn atoi(a: i64);
 
 fn main() {
-	let num: i32 = 12/3;
+	putchar(65); /* A */
+	putchar(10); /* newline */
+
+	let hello: i32 = atoi("10");
+	let hello2: i32 = hello;
 
 	asm!("xor rax, rax");
-
-	printf("%d: %c\n", num, 67 + 3);
-
-	let A: i8 = 65;
-	let n: i8 = 10;
-
-	putchar(A);
-	putchar(n);
-
-	myputchar(A);
-	myputchar(n);
-
-	let new_A: i8 = A;
-
-	putchar(new_A);
-	putchar(n);
-
-	putchar(66 + 5);
-	putchar(10);
-
-	let string: i64 = "Hello, world!";
-	puts(string);
+	printf("%d\n", hello2);
 
 	exit(0);
 }

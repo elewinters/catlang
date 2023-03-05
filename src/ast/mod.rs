@@ -22,6 +22,26 @@ pub enum AstType<'a> {
 	Newline
 }
 
+pub fn process_function_parmaters(iter: &mut core::slice::Iter<TokenType>, line: i64) -> Result<Vec<Expression>, (String, i64)> {
+	let mut arguments: Vec<Expression> = Vec::new();
+
+	/* iterate over tokens and push the arguments to 'arguments' vector */
+	while let Some(i) = iter.next() {
+		match (i) {						
+			StringLiteral(_) | IntLiteral(_) | Identifier(_) => arguments.push(expressions::eval_expression(i, iter, line)?),
+			
+			Operator(',') | Newline => (),
+
+			Operator(';') => break,
+			Operator(')') => break,
+
+			err => return Err((format!("unexpected {} in call to function/macro", lexer::token_to_string(err)), line))
+		}
+	}
+
+	Ok(arguments)
+}
+
 pub fn ast(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 	let mut ast: Vec<AstType> = Vec::new();
 	let mut line: i64 = 1;
@@ -166,22 +186,8 @@ pub fn ast(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 					Some(Operator('(')) => (),
 					_ => return Err((format!("expected operator '(' after {macro_or_function} '{identifier}'"), line))
 				}
-
-				let mut arguments: Vec<Expression> = Vec::new();
-
-				/* iterate over tokens and push the arguments to 'arguments' vector */
-				while let Some(i) = iter.next() {
-					match (i) {						
-						StringLiteral(_) | IntLiteral(_) | Identifier(_) => arguments.push(expressions::eval_expression(i, &mut iter, line)?),
-						
-						Operator(',') | Newline => (),
-
-						Operator(';') => break,
-						Operator(')') => break,
-
-						err => return Err((format!("unexpected {} in call to {macro_or_function} {identifier}", lexer::token_to_string(err)), line))
-					}
-				}
+				
+				let arguments = process_function_parmaters(&mut iter, line)?;
 
 				if (macro_or_function == "macro") {
 					ast.push(AstType::MacroCall(identifier, arguments));

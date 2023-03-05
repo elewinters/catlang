@@ -1,6 +1,8 @@
 use crate::lexer;
 use crate::lexer::TokenType::{self, *};
 
+use super::process_function_parmaters;
+
 #[derive(Debug)]
 pub enum Expression {
 	NumericalExpression(String),
@@ -20,6 +22,7 @@ pub fn expression_to_string(token: &Expression) -> String {
 }
 
 pub fn eval_expression(token: &TokenType, iter: &mut core::slice::Iter<TokenType>, line: i64) -> Result<Expression, (String, i64)> {
+	let mut peekable = iter.peekable();
 	match token {
 		IntLiteral(x) => {
 			let mut expr = String::new();
@@ -37,7 +40,15 @@ pub fn eval_expression(token: &TokenType, iter: &mut core::slice::Iter<TokenType
 
 			Ok(Expression::NumericalExpression(expr))
 		},
-		Identifier(x) => Ok(Expression::Expression(x.to_owned())),
+		Identifier(x) => {
+			match peekable.peek() {
+				Some(Operator('(')) => {
+					let arguments = process_function_parmaters(iter, line)?;
+					Ok(Expression::FunctionCallExpression(x.to_owned(), arguments))
+				},
+				_ => Ok(Expression::Expression(x.to_owned())) 
+			}
+		}
 		StringLiteral(x) => Ok(Expression::StringExpression(x.to_owned())),
 
 		err => return Err((format!("expected either an int literal or string literal in expression evaulation, but got {} instead", lexer::token_to_string(err)), line)),

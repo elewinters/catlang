@@ -64,8 +64,8 @@ fn add_variable(
 
 	name: &str, 
 	vartype: &str, 
-	initval: Option<&str>) -> Result<(), (String, i64)> 
-{
+	initval: Option<&str>
+) -> Result<(), (String, i64)> {
 	let (word, bytesize) = get_size_of_type(vartype, line)?;
 	function_state.stacksize += bytesize;
 
@@ -82,10 +82,85 @@ fn add_variable(
 	Ok(())
 }
 
+fn call_function(
+	name: &str, 
+	args: &Vec<expressions::Expression>, 
+
+	functions: &HashMap<String, Function>,
+	current_function: &mut FunctionState,
+
+	line: i64,
+
+	textsect: &mut String,
+	datasect: &mut String
+
+) -> Result<(), (String, i64)> {
+	let function = match functions.get(name) {
+		Some(x) => x,
+		None => return Err((format!("undefined function '{name}'"), line))
+	};
+
+	if (args.len() != function.arg_types.len()) {
+		/* weird looking if statment is here so we dont produce an error message with broken english */
+		return Err((format!("function '{name}' accepts {} arguments but {} {} given", function.arg_types.len(), args.len(), if (args.len() == 1) {
+			"was"
+		} 
+		else {
+			"were"
+		}), line))
+	}
+
+	/* insert arguments to their respective registers */
+	for (i, v) in args.iter().enumerate() {
+		match (v) {
+			NumericalExpression(x) => {
+				let (word, _) = get_size_of_type(&function.arg_types[i], line)?;
+				let register = get_register_call(i, word, line)?;
+
+				textsect.push_str(&format!("\tmov {register}, {x}\n"));
+			},
+			StringExpression(x) => {
+				let register = get_register_call(i, "qword", line)?;
+				let identifier = resolve_string_literal(datasect, x);
+
+				textsect.push_str(&format!("\tmov {register}, {identifier}\n"));
+			},
+			Expression(varname) => { 
+				match current_function.local_variables.get(varname) {
+					Some(var) => {
+						if (function.arg_types[i] != var.vartype) {
+							return Err((format!("function '{name}' accepts type {} as paramater {} but the type of '{varname}' is {}", function.arg_types[i], i + 1, var.vartype), line))
+						}
+
+						let (word, _) = get_size_of_type(&var.vartype, line)?;
+						let register = get_register_call(i, word, line)?;
+
+						if (word == "dword" || word == "qword") {
+							textsect.push_str(&format!("\tmov {register}, {word} {}\n", var.addr));
+						}
+						else {
+							let register32 = get_register_call(i, "dword", line)?;
+							textsect.push_str(&format!("\tmovsx {register32}, {word} {}\n", var.addr));
+						}
+					},
+					None => return Err((format!("variable '{varname}' is not defined in the current scope"), line))
+				}
+			},
+
+			err => return Err((format!("expected either an int literal, string literal or identifier in call to function '{name}', but got {}", expressions::expression_to_string(err)), line))
+		};
+	}
+	
+	textsect.push_str(&format!("\tcall {name}\n"));
+	current_function.calls_funcs = true;
+
+	Ok(())
+}
+
 /* returns the assembly output on success, returns a string containing error information on failure */
 pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 	let iter = input.iter();
-	
+
 	let mut line: i64 = 1;
 
 	let mut datasect = String::from("section .data\n");
@@ -133,64 +208,15 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 			/*      function calling      */
 			/* -------------------------- */
 			AstType::FunctionCall(name, args) => {
-				let function = match functions.get(*name) {
-					Some(x) => x,
-					None => return Err((format!("undefined function '{name}'"), line))
-				};
-
-				if (args.len() != function.arg_types.len()) {
-					/* weird looking if statment is here so we dont produce an error message with broken english */
-					return Err((format!("function '{name}' accepts {} arguments but {} {} given", function.arg_types.len(), args.len(), if (args.len() == 1) {
-						"was"
-					} 
-					else {
-						"were"
-					}), line))
-				}
-
-				/* insert arguments to their respective registers */
-				for (i, v) in args.iter().enumerate() {
-					match (v) {
-						NumericalExpression(x) => {
-							let (word, _) = get_size_of_type(&function.arg_types[i], line)?;
-							let register = get_register_call(i, word, line)?;
-
-							textsect.push_str(&format!("\tmov {register}, {x}\n"));
-						},
-						StringExpression(x) => {
-							let register = get_register_call(i, "qword", line)?;
-							let identifier = resolve_string_literal(&mut datasect, x);
-
-							textsect.push_str(&format!("\tmov {register}, {identifier}\n"));
-						},
-						Expression(varname) => { 
-							match current_function.local_variables.get(varname) {
-								Some(var) => {
-									if (function.arg_types[i] != var.vartype) {
-										return Err((format!("function '{name}' accepts type {} as paramater {} but the type of '{varname}' is {}", function.arg_types[i], i + 1, var.vartype), line))
-									}
-
-									let (word, _) = get_size_of_type(&var.vartype, line)?;
-									let register = get_register_call(i, word, line)?;
-
-									if (word == "dword" || word == "qword") {
-										textsect.push_str(&format!("\tmov {register}, {word} {}\n", var.addr));
-									}
-									else {
-										let register32 = get_register_call(i, "dword", line)?;
-										textsect.push_str(&format!("\tmovsx {register32}, {word} {}\n", var.addr));
-									}
-								},
-								None => return Err((format!("variable '{varname}' is not defined in the current scope"), line))
-							}
-						},
-
-						err => return Err((format!("expected either an int literal, string literal or identifier in call to function '{name}', but got {}", expressions::expression_to_string(err)), line))
-					};
-				}
-				
-				textsect.push_str(&format!("\tcall {name}\n\n"));
-				current_function.calls_funcs = true;
+				call_function(name, args, 
+					&functions, 
+					&mut current_function, 
+					line, 
+					
+					&mut textsect, 
+					&mut datasect
+				)?;
+				textsect.push('\n');
 			},
 			/* -------------------------- */
 			/*        function end        */
@@ -239,7 +265,19 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 						
 						register.to_owned()
 					},
-					FunctionCallExpression(_, _) => todo!()
+					FunctionCallExpression(name, args) => {
+						call_function(name, args, 
+							&functions, 
+							&mut current_function, 
+							line, 
+							
+							&mut textsect, 
+							&mut datasect
+						)?;
+
+						/* lets just assume all return types are ints for now */
+						get_accumulator("dword").to_owned()
+					}
 				};
 
 				add_variable(
@@ -250,6 +288,8 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 
 					name, vartype, Some(&initializer)
 				)?;
+
+				textsect.push('\n');
 			},
 			/* -------------------------- */
 			/*           macros           */
