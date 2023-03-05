@@ -18,6 +18,16 @@ struct Variable {
 	vartype: String
 }
 
+/* the mutable state of the current function */
+/* stuff like local variables, the size of the stack, etc */
+struct FunctionState {
+	local_variables: HashMap<String, Variable>,
+	stacksize: i32,
+	stack_subtraction_index: usize,
+
+	calls_funcs: bool,
+}
+
 /* given a string, this function will insert that string into the datasection */
 /* and return the identifier for it (like L0, L1, etc...) */
 fn resolve_string_literal(datasect: &mut String, literal: &str) -> String {
@@ -36,26 +46,23 @@ fn resolve_string_literal(datasect: &mut String, literal: &str) -> String {
 /* adds a variable to the local_variables hashmap */
 fn add_variable(
 	line: i64,
-	stacksize: &mut i32,
+	function_state: &mut FunctionState,
 
 	textsect: &mut String,
-	local_variables: &mut HashMap<String, Variable>,
 
 	name: &str, 
 	vartype: &str, 
 	initval: Option<&str>) -> Result<(), (String, i64)> 
 {
 	let (word, bytesize) = get_size_of_type(vartype, line)?;
+	function_state.stacksize += bytesize;
 
-	*stacksize += bytesize;
-
-	let addr = format!("[rbp-{stacksize}]");
-
+	let addr = format!("[rbp-{}]", function_state.stacksize);
 	if let Some(initval) = initval {
 		textsect.push_str(&format!("\tmov {word} {addr}, {initval}\n"));
 	}
 
-	local_variables.insert(name.to_string(), Variable {
+	function_state.local_variables.insert(name.to_string(), Variable {
 		addr, 
 		vartype: vartype.to_owned() 
 	});
@@ -71,15 +78,15 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 	let mut datasect = String::from("section .data\n");
 	let mut textsect = String::from("section .text\n\n");
 
-	/* key is the variable name, value is its address */
-	let mut local_variables: HashMap<String, Variable> = HashMap::new();
-	let mut functions: HashMap<String, Function> = HashMap::new(); 
-	
-	/* not even gonna bother explaining this */
-	let mut stacksize = 0;
+	let mut functions: HashMap<String, Function> = HashMap::new();
 
-	let mut calls_funcs = false;
-	let mut stack_subtraction_index = 0;
+	let mut current_function = FunctionState {
+		local_variables: HashMap::new(),
+
+		stacksize: 0,
+		stack_subtraction_index: 0,
+		calls_funcs: false
+	};
 
 	for i in iter {
 		match i {
@@ -89,7 +96,7 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 				textsect.push_str(&format!("global {name}\n{name}:\n"));
 				textsect.push_str("\tpush rbp\n\tmov rbp, rsp\n\n");
 				
-				stack_subtraction_index = textsect.len() - 1;
+				current_function.stack_subtraction_index = textsect.len() - 1;
 
 				/* add arguments to the stack */
 				for i in 0..args.0.len() {
@@ -97,9 +104,8 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 					add_variable(
 						line,
 	
-						&mut stacksize,
+						&mut current_function,
 						&mut textsect, 
-						&mut local_variables,
 	
 						&args.0[i], &args.1[i], Some(get_register_definition(i, word, line)?)
 					)?;
@@ -144,7 +150,7 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 							textsect.push_str(&format!("\tmov {register}, {identifier}\n"));
 						},
 						Expression(varname) => { 
-							match local_variables.get(varname) {
+							match current_function.local_variables.get(varname) {
 								Some(var) => {
 									if (function.arg_types[i] != var.vartype) {
 										return Err((format!("function '{name}' accepts type {} as paramater {} but the type of '{varname}' is {}", function.arg_types[i], i + 1, var.vartype), line))
@@ -170,10 +176,10 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 				}
 				
 				textsect.push_str(&format!("\tcall {name}\n\n"));
-				calls_funcs = true;
+				current_function.calls_funcs = true;
 			},
 			ScopeEnd => {
-				if (calls_funcs && stacksize != 0) {
+				if (current_function.calls_funcs && current_function.stacksize != 0) {
 					textsect.push_str("\tleave\n");
 				}
 				else {
@@ -182,15 +188,15 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 				
 				/* we want to subtract the value of stackspace from rsp if we call other functions */
 				/* and if the aren't any local variables in the current function */
-				if (calls_funcs && stacksize != 0) {
-					textsect.insert_str(stack_subtraction_index, &format!("\tsub rsp, {stacksize}\n"));
+				if (current_function.calls_funcs && current_function.stacksize != 0) {
+					textsect.insert_str(current_function.stack_subtraction_index, &format!("\tsub rsp, {}\n", current_function.stacksize));
 				}
 
 				textsect.push_str("\tret\n\n");
-				stacksize = 0;
-				calls_funcs = false;
+				current_function.stacksize = 0;
+				current_function.calls_funcs = false;
 
-				local_variables.clear();
+				current_function.local_variables.clear();
 			},
 			/* variable stuffs */
 			VariableDefinition(name, vartype, initval) => {
@@ -200,7 +206,7 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 					Expression(varname) => {
 						/* we move the variable to a temporary register and then pass that into add_variable */
 						/* we have to use a temp register because we can't mov a memory location to another memory location obv */
-						let var = match local_variables.get(varname) {
+						let var = match current_function.local_variables.get(varname) {
 							Some(x) => x,
 							None => return Err((format!("attempted to create variable with initializer value of variable '{varname}', but such variable does not exist"), line))
 						};
@@ -223,9 +229,8 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 				add_variable(
 					line,
 
-					&mut stacksize,
+					&mut current_function,
 					&mut textsect, 
-					&mut local_variables,
 
 					name, vartype, Some(&initializer)
 				)?;
@@ -245,7 +250,7 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 						NumericalExpression(x) => x.to_owned(),
 						StringExpression(x) => resolve_string_literal(&mut datasect, x),
 						Expression(varname) => { 
-							match local_variables.get(varname) {
+							match current_function.local_variables.get(varname) {
 								Some(var) => {
 									if (var.vartype != "i64") {
 										return Err((format!("syscall! macro only accepts arguments of type i64, yet type of '{varname}' is {}", var.vartype), line));
