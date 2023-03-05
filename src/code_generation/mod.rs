@@ -28,6 +28,18 @@ struct FunctionState {
 	calls_funcs: bool,
 }
 
+impl Default for FunctionState {
+	fn default() -> Self {
+		Self {
+			local_variables: HashMap::new(),
+
+			stacksize: 0,
+			stack_subtraction_index: 0,
+			calls_funcs: false
+		}
+	}
+}
+
 /* given a string, this function will insert that string into the datasection */
 /* and return the identifier for it (like L0, L1, etc...) */
 fn resolve_string_literal(datasect: &mut String, literal: &str) -> String {
@@ -72,26 +84,22 @@ fn add_variable(
 
 /* returns the assembly output on success, returns a string containing error information on failure */
 pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
-	let mut line: i64 = 1;
 	let iter = input.iter();
+	
+	let mut line: i64 = 1;
 
 	let mut datasect = String::from("section .data\n");
 	let mut textsect = String::from("section .text\n\n");
 
 	let mut functions: HashMap<String, Function> = HashMap::new();
-
-	let mut current_function = FunctionState {
-		local_variables: HashMap::new(),
-
-		stacksize: 0,
-		stack_subtraction_index: 0,
-		calls_funcs: false
-	};
+	let mut current_function = FunctionState::default();
 
 	for i in iter {
 		match i {
 			AstType::Newline => line += 1,
-			/* function stuffs */
+			/* ---------------------------- */
+			/*     function definitions     */
+			/* ---------------------------- */
 			FunctionDefinition(name, args) => {
 				textsect.push_str(&format!("global {name}\n{name}:\n"));
 				textsect.push_str("\tpush rbp\n\tmov rbp, rsp\n\n");
@@ -113,11 +121,17 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 				
 				functions.insert(name.to_string(), Function { arg_types: &args.1 });
 			},
+			/* --------------------------- */
+			/*     function prototypes     */
+			/* --------------------------- */
 			FunctionPrototype(name, args) => {
 				textsect.push_str(&format!("extern {name}\n"));
 
 				functions.insert(name.to_string(), Function { arg_types: args });
 			}
+			/* -------------------------- */
+			/*      function calling      */
+			/* -------------------------- */
 			AstType::FunctionCall(name, args) => {
 				let function = match functions.get(*name) {
 					Some(x) => x,
@@ -178,6 +192,9 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 				textsect.push_str(&format!("\tcall {name}\n\n"));
 				current_function.calls_funcs = true;
 			},
+			/* -------------------------- */
+			/*        function end        */
+			/* -------------------------- */
 			ScopeEnd => {
 				if (current_function.calls_funcs && current_function.stacksize != 0) {
 					textsect.push_str("\tleave\n");
@@ -193,12 +210,11 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 				}
 
 				textsect.push_str("\tret\n\n");
-				current_function.stacksize = 0;
-				current_function.calls_funcs = false;
-
-				current_function.local_variables.clear();
+				current_function = FunctionState::default();
 			},
-			/* variable stuffs */
+			/* --------------------------- */
+			/*    variable declerations    */
+			/* --------------------------- */
 			VariableDefinition(name, vartype, initval) => {
 				let initializer = match (initval) {
 					NumericalExpression(x) => x.to_string(),
@@ -235,7 +251,9 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 					name, vartype, Some(&initializer)
 				)?;
 			},
-			/* macro stuffs */
+			/* -------------------------- */
+			/*           macros           */
+			/* -------------------------- */
 			MacroCall("asm!", args) => {
 				let instruction = match &args[0] {
 					StringExpression(ref x) => x,
