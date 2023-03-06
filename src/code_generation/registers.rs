@@ -1,106 +1,112 @@
-pub fn get_size_of_type(input: &str, line: i64) -> Result<(&'static str, i32), (String, i64)> {
+use self::WordType::*;
+
+pub enum WordType {
+	Byte,
+	Word,
+	DoubleWord,
+	QuadWord
+}
+
+pub fn word_to_string(word: &WordType) -> &'static str {
+	match word {
+		Byte => "byte",
+		Word => "word",
+		DoubleWord => "dword",
+		QuadWord => "qword"
+	}
+}
+
+pub fn get_size_of_type(input: &str, line: i64) -> Result<(WordType, i32), (String, i64)> {
 	match (input) {
-		"i8" => Ok(("byte", 1)),
-		"i16" => Ok(("word", 2)),
-		"i32" => Ok(("dword", 4)),
-		"i64" => Ok(("qword", 8)),
+		"i8" => Ok((Byte, 1)),
+		"i16" => Ok((Word, 2)),
+		"i32" => Ok((DoubleWord, 4)),
+		"i64" => Ok((QuadWord, 8)),
 		_ => return Err((format!("'{input}' is not a valid type"), line))
 	}
 }
 
-pub fn get_accumulator(vartype: &str) -> &'static str {
-	match vartype {
-		"byte" => "al",
-		"word" => "ax",
-		"dword" => "eax",
-		"qword" => "rax",
-
-		_ => "eax"
+pub fn get_accumulator(word: &WordType) -> &'static str {
+	match word {
+		Byte => "al",
+		Word => "ax",
+		DoubleWord => "eax",
+		QuadWord => "rax",
 	}
 }
 
-pub fn get_register(argument_count: usize, argword: &str, line: i64) -> Result<&'static str, (String, i64)> {
-    match (argument_count, argword) {
+pub fn get_register(argument_count: usize, word: &WordType, line: i64) -> Result<&'static str, (String, i64)> {
+    match (argument_count, word) {
         /* edi/rdi */
-        (0, "byte") => Ok("dil"),
-        (0, "word") => Ok("di"), 
-        (0, "dword") => Ok("edi"),
-        (0, "qword") => Ok("rdi"),
+        (0, Byte) => Ok("dil"),
+        (0, Word) => Ok("di"), 
+        (0, DoubleWord) => Ok("edi"),
+        (0, QuadWord) => Ok("rdi"),
 
         /* esi/rsi */
-        (1, "byte") => Ok("sil"), 
-        (1, "word") => Ok("si"),
-        (1, "dword") => Ok("esi"),
-        (1, "qword") => Ok("rsi"),
+        (1, Byte) => Ok("sil"), 
+        (1, Word) => Ok("si"),
+        (1, DoubleWord) => Ok("esi"),
+        (1, QuadWord) => Ok("rsi"),
 
         /* edx/rdx */
-        (2, "byte") => Ok("dl"),
-        (2, "word") => Ok("dx"),
-        (2, "dword") => Ok("edx"),
-        (2, "qword") => Ok("rdx"),
+        (2, Byte) => Ok("dl"),
+        (2, Word) => Ok("dx"),
+        (2, DoubleWord) => Ok("edx"),
+        (2, QuadWord) => Ok("rdx"),
 
         /* ecx/rcx */
-        (3, "byte") => Ok("cl"),
-        (3, "word") => Ok("cx"),
-        (3, "dword") => Ok("ecx"),
-        (3, "qword") => Ok("rcx"),
+        (3, Byte) => Ok("cl"),
+        (3, Word) => Ok("cx"),
+        (3, DoubleWord) => Ok("ecx"),
+        (3, QuadWord) => Ok("rcx"),
         
         /* r8 */
-        (4, "byte") => Ok("r8b"),
-        (4, "word") => Ok("r8w"),
-        (4, "dword") => Ok("r8d"),
-        (4, "qword") => Ok("r8"),
+        (4, Byte) => Ok("r8b"),
+        (4, Word) => Ok("r8w"),
+        (4, DoubleWord) => Ok("r8d"),
+        (4, QuadWord) => Ok("r8"),
 
         /* r9 */
-        (5, "byte") => Ok("r9b"),
-        (5, "word") => Ok("r9w"),
-        (5, "dword") => Ok("r9d"),
-        (5, "qword") => Ok("r9"),
+        (5, Byte) => Ok("r9b"),
+        (5, Word) => Ok("r9w"),
+        (5, DoubleWord) => Ok("r9d"),
+        (5, QuadWord) => Ok("r9"),
 
-        (c, t) => {
-            if (c > 5) {
-                Err((String::from("too many arguments to function, functions can only up to 6 arguments at the moment"), line))
-            }
-            else {
-                Err((format!("'{t}' is not a valid word"), line))
-            }
+        (_, _) => {
+            Err((String::from("too many arguments to function, functions can only up to 6 arguments at the moment"), line))
         }
     }
 }
 
-pub fn get_register_32_or_64(argument_count: usize, argword: &str, line: i64) -> Result<&'static str, (String, i64)> {
-    match (argument_count, argword) {
+pub fn get_register_32_or_64(argument_count: usize, word: &WordType, line: i64) -> Result<&'static str, (String, i64)> {
+    match (argument_count, word) {
         /* edi/rdi */
-        (0, "byte") | (0, "word") | (0, "dword") => Ok("edi"),
-        (0, "qword") => Ok("rdi"),
+        (0, Byte) | (0, Word) | (0, DoubleWord) => Ok("edi"),
+        (0, QuadWord) => Ok("rdi"),
 
         /* esi/rsi */
-        (1, "byte") | (1, "word") | (1, "dword") => Ok("esi"),
-        (1, "qword") => Ok("rsi"),
+        (1, Byte) | (1, Word) | (1, DoubleWord) => Ok("esi"),
+        (1, QuadWord) => Ok("rsi"),
 
         /* edx/rdx */
-        (2, "byte") | (2, "word") | (2, "dword") => Ok("edx"),
-        (2, "qword") => Ok("rdx"),
+        (2, Byte) | (2, Word) | (2, DoubleWord) => Ok("edx"),
+        (2, QuadWord) => Ok("rdx"),
 
         /* ecx/rcx */
-        (3, "byte") | (3, "word") | (3, "dword") => Ok("ecx"),
-        (3, "qword") => Ok("rcx"),
+        (3, Byte) | (3, Word) | (3, DoubleWord) => Ok("ecx"),
+        (3, QuadWord) => Ok("rcx"),
         
         /* r8 */
-        (4, "byte") | (4, "word") |(4, "dword") => Ok("r8d"),
-        (4, "qword") => Ok("r8"),
+        (4, Byte) | (4, Word) |(4, DoubleWord) => Ok("r8d"),
+        (4, QuadWord) => Ok("r8"),
 
         /* r9 */
-        (5, "byte") | (5, "word") | (5, "dword") => Ok("r9d"),
-        (5, "qword") => Ok("r9"),
+        (5, Byte) | (5, Word) | (5, DoubleWord) => Ok("r9d"),
+        (5, QuadWord) => Ok("r9"),
 
-        (c, t) => {
-            if (c > 5) {
-                Err((String::from("too many arguments to function, functions can only up to 6 arguments at the moment"), line))
-            }
-            else {
-                Err((format!("'{t}' is not a valid word"), line))
-            }
+        (_, _) => {
+            Err((String::from("too many arguments to function, functions can only up to 6 arguments at the moment"), line))
         }
     }
 }

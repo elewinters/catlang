@@ -7,6 +7,7 @@ use crate::parser::expressions::{self, Expression};
 use crate::parser::expressions::Expression::*;
 
 use registers::*;
+use registers::WordType::*;
 
 /* this will have more fields in the future, like the return value */
 struct Function<'a> {
@@ -75,9 +76,9 @@ fn eval_expression(
 			}
 
 			let (word, _) = get_size_of_type(&var.vartype, line)?;
-			let register = get_accumulator(word);
+			let register = get_accumulator(&word);
 
-			textsect.push_str(&format!("\tmov {register}, {word} {}\n", var.addr));
+			textsect.push_str(&format!("\tmov {register}, {} {}\n", word_to_string(&word), var.addr));
 			
 			Ok(register.to_owned())
 		},
@@ -104,7 +105,7 @@ fn eval_expression(
 			}
 
 			let (word, _) = get_size_of_type(return_type, line)?;
-			Ok(get_accumulator(word).to_owned())
+			Ok(get_accumulator(&word).to_owned())
 		}
 	}
 }
@@ -125,7 +126,7 @@ fn add_variable(
 
 	let addr = format!("[rbp-{}]", function_state.stacksize);
 	if let Some(initval) = initval {
-		textsect.push_str(&format!("\tmov {word} {addr}, {initval}\n"));
+		textsect.push_str(&format!("\tmov {} {addr}, {initval}\n", word_to_string(&word)));
 	}
 
 	function_state.local_variables.insert(name.to_string(), Variable {
@@ -169,12 +170,12 @@ fn call_function(
 		match (v) {
 			Numerical(x) => {
 				let (word, _) = get_size_of_type(&function.arg_types[i], line)?;
-				let register = get_register(i, word, line)?;
+				let register = get_register(i, &word, line)?;
 
 				textsect.push_str(&format!("\tmov {register}, {x}\n"));
 			},
 			StringLiteral(x) => {
-				let register = get_register(i, "qword", line)?;
+				let register = get_register(i, &QuadWord, line)?;
 				let identifier = resolve_string_literal(datasect, x);
 
 				textsect.push_str(&format!("\tmov {register}, {identifier}\n"));
@@ -187,14 +188,16 @@ fn call_function(
 						}
 
 						let (word, _) = get_size_of_type(&var.vartype, line)?;
-						let register = get_register(i, word, line)?;
+						let register = get_register(i, &word, line)?;
 
-						if (word == "dword" || word == "qword") {
-							textsect.push_str(&format!("\tmov {register}, {word} {}\n", var.addr));
-						}
-						else {
-							let register32 = get_register(i, "dword", line)?;
-							textsect.push_str(&format!("\tmovsx {register32}, {word} {}\n", var.addr));
+						match (word) {
+							DoubleWord | QuadWord => {
+								textsect.push_str(&format!("\tmov {register}, {} {}\n", word_to_string(&word), var.addr))
+							},
+							_ => {
+								let register32 = get_register(i, &DoubleWord, line)?;
+								textsect.push_str(&format!("\tmovsx {register32}, {} {}\n", word_to_string(&word), var.addr));
+							}
 						}
 					},
 					None => return Err((format!("variable '{varname}' is not defined in the current scope"), line))
@@ -244,7 +247,7 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 						&mut current_function,
 						&mut textsect, 
 	
-						&args.0[i], &args.1[i], Some(get_register_32_or_64(i, word, line)?)
+						&args.0[i], &args.1[i], Some(get_register_32_or_64(i, &word, line)?)
 					)?;
 				}
 				
@@ -296,12 +299,12 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 				)?;
 
 				let (word, _) = get_size_of_type(&return_type, line)?;
-				let accumulator = get_accumulator(word);
+				let accumulator = get_accumulator(&word);
 
 				/* the return_value can sometimes be the accumulator */
 				/* which means that we'll be moving rax to rax, which is just unnecessary */
 				if (accumulator != return_value) {
-					textsect.push_str(&format!("\tmov {accumulator}, {word} {return_value}\n"));
+					textsect.push_str(&format!("\tmov {accumulator}, {} {return_value}\n", word_to_string(&word)));
 				}
 			}
 			/* -------------------------- */
