@@ -169,12 +169,12 @@ fn call_function(
 		match (v) {
 			Numerical(x) => {
 				let (word, _) = get_size_of_type(&function.arg_types[i], line)?;
-				let register = get_register_call(i, word, line)?;
+				let register = get_register(i, word, line)?;
 
 				textsect.push_str(&format!("\tmov {register}, {x}\n"));
 			},
 			StringLiteral(x) => {
-				let register = get_register_call(i, "qword", line)?;
+				let register = get_register(i, "qword", line)?;
 				let identifier = resolve_string_literal(datasect, x);
 
 				textsect.push_str(&format!("\tmov {register}, {identifier}\n"));
@@ -187,13 +187,13 @@ fn call_function(
 						}
 
 						let (word, _) = get_size_of_type(&var.vartype, line)?;
-						let register = get_register_call(i, word, line)?;
+						let register = get_register(i, word, line)?;
 
 						if (word == "dword" || word == "qword") {
 							textsect.push_str(&format!("\tmov {register}, {word} {}\n", var.addr));
 						}
 						else {
-							let register32 = get_register_call(i, "dword", line)?;
+							let register32 = get_register(i, "dword", line)?;
 							textsect.push_str(&format!("\tmovsx {register32}, {word} {}\n", var.addr));
 						}
 					},
@@ -244,7 +244,7 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 						&mut current_function,
 						&mut textsect, 
 	
-						&args.0[i], &args.1[i], Some(get_register_definition(i, word, line)?)
+						&args.0[i], &args.1[i], Some(get_register_32_or_64(i, word, line)?)
 					)?;
 				}
 				

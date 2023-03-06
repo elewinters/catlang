@@ -25,7 +25,6 @@ macro_rules! exit {
 
 		NOW:
 			replace String with enums for all of the datatypes and word types
-			rename functions in registers.rs to something like get_register_casted
 
 			add control flow (if & match)
 			add arrays

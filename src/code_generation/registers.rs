@@ -6,46 +6,20 @@ pub fn get_size_of_type(input: &str, line: i64) -> Result<(&'static str, i32), (
 		"i64" => Ok(("qword", 8)),
 		_ => return Err((format!("'{input}' is not a valid type"), line))
 	}
-} 
-
-pub fn get_register_call(argument_count: usize, argword: &str, line: i64) -> Result<&'static str, (String, i64)> {
-    match (argument_count, argword) {
-        /* edi/rdi */
-        (0, "byte") | (0, "word") | (0, "dword") => Ok("edi"),
-        (0, "qword") => Ok("rdi"),
-
-        /* esi/rsi */
-        (1, "byte") | (1, "word") | (1, "dword") => Ok("esi"),
-        (1, "qword") => Ok("rsi"),
-
-        /* edx/rdx */
-        (2, "byte") | (2, "word") | (2, "dword") => Ok("edx"),
-        (2, "qword") => Ok("rdx"),
-
-        /* ecx/rcx */
-        (3, "byte") | (3, "word") | (3, "dword") => Ok("ecx"),
-        (3, "qword") => Ok("rcx"),
-        
-        /* r8 */
-        (4, "byte") | (4, "word") |(4, "dword") => Ok("r8d"),
-        (4, "qword") => Ok("r8"),
-
-        /* r9 */
-        (5, "byte") | (5, "word") | (5, "dword") => Ok("r9d"),
-        (5, "qword") => Ok("r9"),
-
-        (c, t) => {
-            if (c > 5) {
-                Err((String::from("too many arguments to function, functions can only up to 6 arguments at the moment"), line))
-            }
-            else {
-                Err((format!("'{t}' is not a valid word"), line))
-            }
-        }
-    }
 }
 
-pub fn get_register_definition(argument_count: usize, argword: &str, line: i64) -> Result<&'static str, (String, i64)> {
+pub fn get_accumulator(vartype: &str) -> &'static str {
+	match vartype {
+		"byte" => "al",
+		"word" => "ax",
+		"dword" => "eax",
+		"qword" => "rax",
+
+		_ => "eax"
+	}
+}
+
+pub fn get_register(argument_count: usize, argword: &str, line: i64) -> Result<&'static str, (String, i64)> {
     match (argument_count, argword) {
         /* edi/rdi */
         (0, "byte") => Ok("dil"),
@@ -94,13 +68,39 @@ pub fn get_register_definition(argument_count: usize, argword: &str, line: i64) 
     }
 }
 
-pub fn get_accumulator(vartype: &str) -> &'static str {
-	match vartype {
-		"byte" => "al",
-		"word" => "ax",
-		"dword" => "eax",
-		"qword" => "rax",
+pub fn get_register_32_or_64(argument_count: usize, argword: &str, line: i64) -> Result<&'static str, (String, i64)> {
+    match (argument_count, argword) {
+        /* edi/rdi */
+        (0, "byte") | (0, "word") | (0, "dword") => Ok("edi"),
+        (0, "qword") => Ok("rdi"),
 
-		_ => "eax"
-	}
+        /* esi/rsi */
+        (1, "byte") | (1, "word") | (1, "dword") => Ok("esi"),
+        (1, "qword") => Ok("rsi"),
+
+        /* edx/rdx */
+        (2, "byte") | (2, "word") | (2, "dword") => Ok("edx"),
+        (2, "qword") => Ok("rdx"),
+
+        /* ecx/rcx */
+        (3, "byte") | (3, "word") | (3, "dword") => Ok("ecx"),
+        (3, "qword") => Ok("rcx"),
+        
+        /* r8 */
+        (4, "byte") | (4, "word") |(4, "dword") => Ok("r8d"),
+        (4, "qword") => Ok("r8"),
+
+        /* r9 */
+        (5, "byte") | (5, "word") | (5, "dword") => Ok("r9d"),
+        (5, "qword") => Ok("r9"),
+
+        (c, t) => {
+            if (c > 5) {
+                Err((String::from("too many arguments to function, functions can only up to 6 arguments at the moment"), line))
+            }
+            else {
+                Err((format!("'{t}' is not a valid word"), line))
+            }
+        }
+    }
 }
