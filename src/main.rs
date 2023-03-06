@@ -21,13 +21,11 @@ macro_rules! exit {
 	TODO:
 		rewrite the lexer
 		add a nicer way to print the AST
+		make expressions more versatile
+
 		NOW:
-			add function calling (no paramaters or return values at first)
-			add variables
-			add function paramaters
-			add expressions
-			add function returning
-			add interfacing with libc
+			replace String with enums for all of the datatypes and word types
+			rename functions in registers.rs to something like get_register_casted
 
 			add control flow (if & match)
 			add arrays

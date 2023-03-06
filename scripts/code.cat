@@ -31,9 +31,14 @@ fn void(num: i32) {
 	puts("void...");
 }
 
+fn sum(x: i64, y: i64) -> i64 {
+	asm!("mov rax, rdi");
+	asm!("add rax, rsi");
+}
+
 fn main() {
 	void(1);
-	let num: i64 = number();
+	let num: i64 = sum(50, 50);
 
 	asm!("xor rax, rax");
 	printf("%ld\n", num);
