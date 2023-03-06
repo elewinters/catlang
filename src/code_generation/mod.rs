@@ -114,19 +114,19 @@ fn call_function(
 	/* insert arguments to their respective registers */
 	for (i, v) in args.iter().enumerate() {
 		match (v) {
-			NumericalExpression(x) => {
+			Numerical(x) => {
 				let (word, _) = get_size_of_type(&function.arg_types[i], line)?;
 				let register = get_register_call(i, word, line)?;
 
 				textsect.push_str(&format!("\tmov {register}, {x}\n"));
 			},
-			StringExpression(x) => {
+			StringLiteral(x) => {
 				let register = get_register_call(i, "qword", line)?;
 				let identifier = resolve_string_literal(datasect, x);
 
 				textsect.push_str(&format!("\tmov {register}, {identifier}\n"));
 			},
-			Expression(varname) => { 
+			Variable(varname) => { 
 				match current_function.local_variables.get(varname) {
 					Some(var) => {
 						if (function.arg_types[i] != var.vartype) {
@@ -244,9 +244,9 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 			/* --------------------------- */
 			VariableDefinition(name, vartype, initval) => {
 				let initializer = match (initval) {
-					NumericalExpression(x) => x.to_string(),
-					StringExpression(x) => resolve_string_literal(&mut datasect, x),
-					Expression(varname) => {
+					Numerical(x) => x.to_string(),
+					StringLiteral(x) => resolve_string_literal(&mut datasect, x),
+					Variable(varname) => {
 						/* we move the variable to a temporary register and then pass that into add_variable */
 						/* we have to use a temp register because we can't mov a memory location to another memory location obv */
 						let var = match current_function.local_variables.get(varname) {
@@ -309,7 +309,7 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 			/* -------------------------- */
 			MacroCall("asm!", args) => {
 				let instruction = match &args[0] {
-					StringExpression(ref x) => x,
+					StringLiteral(ref x) => x,
 					err => return Err((format!("expected token type to be a string literal, not {}", expressions::expression_to_string(err)), line))
 				};
 
@@ -318,9 +318,9 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 			MacroCall("syscall!", args) => {
 				for (i, v) in args.iter().enumerate() {
 					let v = match (v) {
-						NumericalExpression(x) => x.to_owned(),
-						StringExpression(x) => resolve_string_literal(&mut datasect, x),
-						Expression(varname) => { 
+						Numerical(x) => x.to_owned(),
+						StringLiteral(x) => resolve_string_literal(&mut datasect, x),
+						Variable(varname) => { 
 							match current_function.local_variables.get(varname) {
 								Some(var) => {
 									if (var.vartype != "i64") {
