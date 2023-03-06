@@ -78,7 +78,7 @@ fn eval_expression(
 			let (word, _) = get_size_of_type(&var.vartype, line)?;
 			let register = get_accumulator(&word);
 
-			textsect.push_str(&format!("\tmov {register}, {} {}\n", word_to_string(&word), var.addr));
+			textsect.push_str(&format!("\tmov {register}, {word} {}\n", var.addr));
 			
 			Ok(register.to_owned())
 		},
@@ -126,7 +126,7 @@ fn add_variable(
 
 	let addr = format!("[rbp-{}]", function_state.stacksize);
 	if let Some(initval) = initval {
-		textsect.push_str(&format!("\tmov {} {addr}, {initval}\n", word_to_string(&word)));
+		textsect.push_str(&format!("\tmov {word} {addr}, {initval}\n"));
 	}
 
 	function_state.local_variables.insert(name.to_string(), Variable {
@@ -192,11 +192,11 @@ fn call_function(
 
 						match (word) {
 							DoubleWord | QuadWord => {
-								textsect.push_str(&format!("\tmov {register}, {} {}\n", word_to_string(&word), var.addr))
+								textsect.push_str(&format!("\tmov {register}, {word} {}\n", var.addr))
 							},
 							_ => {
 								let register32 = get_register(i, &DoubleWord, line)?;
-								textsect.push_str(&format!("\tmovsx {register32}, {} {}\n", word_to_string(&word), var.addr));
+								textsect.push_str(&format!("\tmovsx {register32}, {word} {}\n", var.addr));
 							}
 						}
 					},
@@ -204,7 +204,7 @@ fn call_function(
 				}
 			},
 
-			err => return Err((format!("expected either an int literal, string literal or identifier in call to function '{name}', but got {}", expressions::expression_to_string(err)), line))
+			err => return Err((format!("expected either an int literal, string literal or identifier in call to function '{name}', but got {err}"), line))
 		};
 	}
 	
@@ -304,7 +304,7 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 				/* the return_value can sometimes be the accumulator */
 				/* which means that we'll be moving rax to rax, which is just unnecessary */
 				if (accumulator != return_value) {
-					textsect.push_str(&format!("\tmov {accumulator}, {} {return_value}\n", word_to_string(&word)));
+					textsect.push_str(&format!("\tmov {accumulator}, {word} {return_value}\n"));
 				}
 			}
 			/* -------------------------- */
@@ -361,7 +361,7 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 			MacroCall("asm!", args) => {
 				let instruction = match &args[0] {
 					StringLiteral(ref x) => x,
-					err => return Err((format!("expected token type to be a string literal, not {}", expressions::expression_to_string(err)), line))
+					err => return Err((format!("expected token type to be a string literal, not {err}"), line))
 				};
 
 				textsect.push_str(&format!("\t{}\n", instruction));
@@ -383,7 +383,7 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 							}
 						},
 
-						err => return Err((format!("expected either an int literal, string literal or identifier in call to macro syscall!, but got {}", expressions::expression_to_string(err)), line))
+						err => return Err((format!("expected either an int literal, string literal or identifier in call to macro syscall!, but got {err}"), line))
 					};
 
 					match i {

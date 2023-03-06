@@ -1,4 +1,3 @@
-use crate::lexer;
 use crate::lexer::TokenType::{self, *};
 
 pub mod expressions;
@@ -37,7 +36,7 @@ pub fn process_function_parmaters(iter: &mut core::slice::Iter<TokenType>, line:
 			Operator(';') => break,
 			Operator(')') => break,
 
-			err => return Err((format!("unexpected {} in call to function/macro", lexer::token_to_string(err)), line))
+			err => return Err((format!("unexpected {err} in call to function/macro"), line))
 		}
 	}
 
@@ -101,7 +100,7 @@ pub fn parse(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 						}
 
 						Operator(')') => break,
-						err => return Err((format!("expected either an operator ')', operator '{{' or identifier in function definition of '{function_name}', but got {} instead", lexer::token_to_string(err)), line))
+						err => return Err((format!("expected either an operator ')', operator '{{' or identifier in function definition of '{function_name}', but got {err} instead"), line))
 					}
 				}
 
@@ -115,7 +114,7 @@ pub fn parse(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 						match iter.next() {
 							Some(Operator('>')) => (),
 							
-							Some(x) => return Err((format!("expected operator '>' after operator '-' in function prototype of '{function_name}', but got {} instead", lexer::token_to_string(x)), line)),
+							Some(x) => return Err((format!("expected operator '>' after operator '-' in function prototype of '{function_name}', but got {x} instead"), line)),
 							None => return Err((format!("expected operator '>' after operator '-' in function prototype of '{function_name}'"), line)),
 						}
 

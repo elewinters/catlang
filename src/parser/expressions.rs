@@ -1,4 +1,4 @@
-use crate::lexer;
+use std::fmt::{self, Display};
 use crate::lexer::TokenType::{self, *};
 
 use super::process_function_parmaters;
@@ -11,13 +11,15 @@ pub enum Expression {
 	FunctionCallExpression(String, Vec<Expression>),
 }
 
-pub fn expression_to_string(token: &Expression) -> String {
-	match token {
-		Expression::Numerical(x) => format!("numerical expression '{x}'"),
-		Expression::Variable(x) => format!("expression '{x}'"),
+impl Display for Expression {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		match self {
+			Expression::Numerical(x) => write!(f, "numerical expression '{x}'"),
+			Expression::Variable(x) => write!(f, "variable '{x}'"),
 
-		Expression::StringLiteral(x) => format!("string '{x}'"),
-		Expression::FunctionCallExpression(name, _) => format!("function call to '{name}'"),
+			Expression::StringLiteral(x) => write!(f, "string literal '{x}'"),
+			Expression::FunctionCallExpression(name, _) => write!(f, "function call to '{name}'"),
+		}
 	}
 }
 
@@ -34,7 +36,7 @@ pub fn determine_expression(token: &TokenType, iter: &mut core::slice::Iter<Toke
 
 					IntLiteral(num) => expr.push_str(num),
 					Operator(op) => expr.push(*op),
-					err => return Err((format!("expected int literal or operator in numerical expression, got {} instead", lexer::token_to_string(err)), line))
+					err => return Err((format!("expected int literal or operator in numerical expression, got {err} instead"), line))
 				}
 			}
 
@@ -51,6 +53,6 @@ pub fn determine_expression(token: &TokenType, iter: &mut core::slice::Iter<Toke
 		}
 		StringLiteral(x) => Ok(Expression::StringLiteral(x.to_owned())),
 
-		err => return Err((format!("expected either an int literal or string literal in expression evaulation, but got {} instead", lexer::token_to_string(err)), line)),
+		err => return Err((format!("expected either an int literal or string literal in expression evaulation, but got {err} instead"), line)),
 	}
 }

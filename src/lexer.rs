@@ -1,3 +1,5 @@
+use std::fmt::{self, Display};
+
 #[derive(Debug)]
 pub enum TokenType {
 	Keyword(String),
@@ -10,16 +12,18 @@ pub enum TokenType {
 	Newline
 }
 
-pub fn token_to_string(token: &TokenType) -> String {
-	match token {
-		TokenType::Keyword(x) => format!("keyword '{x}'"),
-		TokenType::Identifier(x) => format!("identifier '{x}'"),
+impl Display for TokenType {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		match self {
+			TokenType::Keyword(x) => write!(f, "keyword '{x}'"),
+			TokenType::Identifier(x) => write!(f, "identifier '{x}'"),
 
-		TokenType::StringLiteral(x) => format!("string literal '{x}'"),
-		TokenType::IntLiteral(x) => format!("int literal '{x}'"),
+			TokenType::StringLiteral(x) => write!(f, "string literal '{x}'"),
+			TokenType::IntLiteral(x) => write!(f, "int literal '{x}'"),
 
-		TokenType::Operator(x) => format!("operator '{x}'"),
-		TokenType::Newline => String::from("'newline'")
+			TokenType::Operator(x) => write!(f, "operator '{x}'"),
+			TokenType::Newline => write!(f, "newline")
+		}
 	}
 }
 

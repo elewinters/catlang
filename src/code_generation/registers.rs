@@ -1,3 +1,4 @@
+use std::fmt::{self, Display};
 use self::WordType::*;
 
 pub enum WordType {
@@ -7,12 +8,14 @@ pub enum WordType {
 	QuadWord
 }
 
-pub fn word_to_string(word: &WordType) -> &'static str {
-	match word {
-		Byte => "byte",
-		Word => "word",
-		DoubleWord => "dword",
-		QuadWord => "qword"
+impl Display for WordType {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		match self {
+			Byte => write!(f, "byte"),
+			Word => write!(f, "word"),
+			DoubleWord => write!(f, "dword"),
+			QuadWord => write!(f, "qword"),
+		}
 	}
 }
 
