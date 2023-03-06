@@ -2,9 +2,9 @@ use std::collections::HashMap;
 
 mod registers;
 
-use crate::ast::AstType::{self, *};
-use crate::ast::expressions;
-use crate::ast::expressions::Expression::*;
+use crate::parser::AstType::{self, *};
+use crate::parser::expressions;
+use crate::parser::expressions::Expression::*;
 
 use registers::*;
 

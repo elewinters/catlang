@@ -42,7 +42,7 @@ pub fn process_function_parmaters(iter: &mut core::slice::Iter<TokenType>, line:
 	Ok(arguments)
 }
 
-pub fn ast(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
+pub fn parse(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 	let mut ast: Vec<AstType> = Vec::new();
 	let mut line: i64 = 1;
 

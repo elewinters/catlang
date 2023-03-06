@@ -5,7 +5,7 @@ use std::process::Command;
 
 mod options;
 mod lexer;
-mod ast;
+mod parser;
 mod code_generation;
 
 macro_rules! exit {
@@ -66,7 +66,7 @@ fn main() {
 	/* --------------------------- */
 	/*   generate AST from tokens  */
 	/* --------------------------- */
-	let ast = match ast::ast(&tokens) {
+	let ast = match parser::parse(&tokens) {
 		Ok(x) => x,
 		Err((err, line)) => exit!(format!("[line {line}] {}", err))
 	};
