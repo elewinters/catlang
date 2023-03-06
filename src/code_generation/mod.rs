@@ -10,7 +10,8 @@ use registers::*;
 
 /* this will have more fields in the future, like the return value */
 struct Function<'a> {
-	arg_types: &'a Vec<String> /* types of paramaters, but not the names of the paramaters */
+	arg_types: &'a Vec<String>, /* types of paramaters, but not the names of the paramaters */
+	return_type: &'a Option<String>
 }
 
 struct Variable {
@@ -194,15 +195,15 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 					)?;
 				}
 				
-				functions.insert(name.to_string(), Function { arg_types: &args.1 });
+				functions.insert(name.to_string(), Function { arg_types: &args.1, return_type: &None });
 			},
 			/* --------------------------- */
 			/*     function prototypes     */
 			/* --------------------------- */
-			FunctionPrototype(name, args) => {
+			FunctionPrototype(name, args, return_type) => {
 				textsect.push_str(&format!("extern {name}\n"));
 
-				functions.insert(name.to_string(), Function { arg_types: args });
+				functions.insert(name.to_string(), Function { arg_types: args, return_type });
 			}
 			/* -------------------------- */
 			/*      function calling      */
@@ -265,8 +266,8 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 						
 						register.to_owned()
 					},
-					FunctionCallExpression(name, args) => {
-						call_function(name, args, 
+					FunctionCallExpression(function_name, args) => {
+						call_function(function_name, args, 
 							&functions, 
 							&mut current_function, 
 							line, 
@@ -274,9 +275,21 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 							&mut textsect, 
 							&mut datasect
 						)?;
+						
+						/* this unwrap will never fail because call_function will have handled it already at this point */
+						let function = functions.get(function_name).unwrap();
 
-						/* lets just assume all return types are ints for now */
-						get_accumulator("qword").to_owned()
+						let return_type = match function.return_type {
+							Some(x) => x,
+							None => return Err((format!("attempted to get return value of function '{function_name}', but it does not return anything"), line))
+						};
+
+						if (return_type != vartype) {
+							return Err((format!("attempted to assign return value of '{function_name}' to '{name}', but the return type of '{function_name}' is '{return_type}', while the type of the variable it was assigned to is '{vartype}'"), line));
+						}
+
+						let (word, _) = get_size_of_type(return_type, line)?;
+						get_accumulator(word).to_owned()
 					}
 				};
 

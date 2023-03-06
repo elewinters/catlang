@@ -8,8 +8,8 @@ use expressions::Expression;
 pub enum AstType<'a> {
 	/* function name, tuple of vectors, first vector holds names, second one holds types */
 	FunctionDefinition(&'a str, (Vec<String>, Vec<String>)),
-	/* function name, vector of types that the function accepts */
-	FunctionPrototype(&'a str, Vec<String>),
+	/* function name, vector of types that the function accepts, return type */
+	FunctionPrototype(&'a str, Vec<String>, Option<String>),
 	/* variable name, type, and initializer value */
 	VariableDefinition(&'a str, &'a str, Expression),
 	/* macro name, arguments */
@@ -79,19 +79,40 @@ pub fn ast(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 							arg_types.push(argtype.to_owned()); 
 
 							match iter.next() {
-								Some(Operator(',')) | Some(Operator(')')) => (),
+								Some(Operator(',')) => (),
+								Some(Operator(')')) => break,
 
 								Some(x) => return Err((format!("in function prototype of '{function_name}', expected a comma after paramater type '{argtype}', but got {} instead", lexer::token_to_string(x)), line)),
 								_ => return Err((format!("in function prototype of '{function_name}', expected a comma after paramater type '{argtype}'"), line))
 							}
 						}
 
-						Operator(')') | Operator(';') | Newline => break,
+						Operator(')') => break,
 						err => return Err((format!("expected either an operator ')', operator ';', newline or identifier in function prototype of '{function_name}', but got {} instead", lexer::token_to_string(err)), line))
 					}
 				}
+
+				let mut return_type: Option<String> = None;
 				
-				ast.push(AstType::FunctionPrototype(function_name, arg_types));
+				/* determine return type */
+				if let Some(Operator('-')) = iter.next() {
+					/* check for > */
+					match iter.next() {
+						Some(Operator('>')) => (),
+						
+						Some(x) => return Err((format!("expected operator '>' after operator '-' in function prototype of '{function_name}', but got {} instead", lexer::token_to_string(x)), line)),
+						None => return Err((format!("expected operator '>' after operator '-' in function prototype of '{function_name}'"), line)),
+					}
+
+					/* now get the actual return type */
+					return_type = match iter.next() {
+						Some(Identifier(x)) => Some(x.to_owned()),
+
+						_ => return Err((format!("expected return type after '->' in function prototype of '{function_name}'"), line))
+					}
+				}
+				
+				ast.push(AstType::FunctionPrototype(function_name, arg_types, return_type));
 			}
 			/* ---------------------------- */
 			/*     function definitions     */
