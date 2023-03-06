@@ -21,24 +21,13 @@ struct Variable {
 
 /* the mutable state of the current function */
 /* stuff like local variables, the size of the stack, etc */
+#[derive(Default)]
 struct FunctionState {
 	local_variables: HashMap<String, Variable>,
 	stacksize: i32,
 	stack_subtraction_index: usize,
 
 	calls_funcs: bool,
-}
-
-impl Default for FunctionState {
-	fn default() -> Self {
-		Self {
-			local_variables: HashMap::new(),
-
-			stacksize: 0,
-			stack_subtraction_index: 0,
-			calls_funcs: false
-		}
-	}
 }
 
 /* given a string, this function will insert that string into the datasection */
