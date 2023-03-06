@@ -150,14 +150,15 @@ pub fn parse(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 							});
 
 							match iter.next() {
-								Some(Operator(',')) | Some(Operator(')')) => (),
+								Some(Operator(',')) => (),
+								Some(Operator(')')) => break,
 
 								Some(Operator('{')) => return Err((format!("unexpected opening curly brace '{{' in paramater list of function definition of {function_name}, did you forget to close the parentheses of the argument list?"), line)),
 								_ => return Err((format!("expected a comma after paramater '{varname}'"), line))
 							}
 						}
 
-						Operator(')') | Operator('{') => break,
+						Operator(')') => break,
 						err => return Err((format!("expected either an operator ')', operator '{{' or identifier in function definition of '{function_name}', but got {} instead", lexer::token_to_string(err)), line))
 					}
 				}
@@ -165,21 +166,31 @@ pub fn parse(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 				let mut return_type: Option<String> = None;
 
 				/* determine return type */
-				if let Some(Operator('-')) = iter.next() {
-					/* check for > */
-					match iter.next() {
-						Some(Operator('>')) => (),
-						
-						Some(x) => return Err((format!("expected operator '>' after operator '-' in function prototype of '{function_name}', but got {} instead", lexer::token_to_string(x)), line)),
-						None => return Err((format!("expected operator '>' after operator '-' in function prototype of '{function_name}'"), line)),
-					}
+				match iter.next() {
+					Some(Operator('-')) => {
+						/* check for > */
+						match iter.next() {
+							Some(Operator('>')) => (),
+							
+							Some(x) => return Err((format!("expected operator '>' after operator '-' in function prototype of '{function_name}', but got {} instead", lexer::token_to_string(x)), line)),
+							None => return Err((format!("expected operator '>' after operator '-' in function prototype of '{function_name}'"), line)),
+						}
 
-					/* now get the actual return type */
-					return_type = match iter.next() {
-						Some(Identifier(x)) => Some(x.to_owned()),
+						/* now get the actual return type */
+						return_type = match iter.next() {
+							Some(Identifier(x)) => Some(x.to_owned()),
 
-						_ => return Err((format!("expected return type after '->' in function prototype of '{function_name}'"), line))
+							_ => return Err((format!("expected return type after '->' in function prototype of '{function_name}'"), line))
+						};
+
+						match iter.next() {
+							Some(Operator('{')) => (),
+							/* unwrap will never panic here */
+							_ => return Err((format!("expected '{{' after '-> {}'", return_type.unwrap()), line))
+						}
 					}
+					Some(Operator('{')) => (),
+					_ => return Err((format!("expected either '{{' or '->' after the paramater list of '{function_name}'"), line))
 				}
 				
 				ast.push(AstType::FunctionDefinition(function_name, (arg_names, arg_types), return_type));

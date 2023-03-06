@@ -23,13 +23,22 @@ fn hello_str() -> i64 {
 	return str;
 }
 
+fn mystrlen(ptr: i64) -> i64 {
+	return strlen(ptr);
+}
+
+fn void(num: i32) {
+	puts("void...");
+}
+
 fn main() {
+	void(1);
 	let num: i64 = number();
 
 	asm!("xor rax, rax");
 	printf("%ld\n", num);
 
-	let len: i64 = strlen("test");
+	let len: i64 = mystrlen("test");
 	
 	asm!("xor rax, rax");
 	printf("lenght of 'test': %ld\n", len);
