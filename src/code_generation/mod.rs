@@ -24,6 +24,7 @@ struct Variable {
 #[derive(Default)]
 struct FunctionState {
 	local_variables: HashMap<String, Variable>,
+	return_type: Option<String>,
 	stacksize: i32,
 	stack_subtraction_index: usize,
 
@@ -165,7 +166,7 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 			/* ---------------------------- */
 			/*     function definitions     */
 			/* ---------------------------- */
-			FunctionDefinition(name, args) => {
+			FunctionDefinition(name, args, return_type) => {
 				textsect.push_str(&format!("global {name}\n{name}:\n"));
 				textsect.push_str("\tpush rbp\n\tmov rbp, rsp\n\n");
 				
@@ -184,7 +185,8 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 					)?;
 				}
 				
-				functions.insert(name.to_string(), Function { arg_types: &args.1, return_type: &None });
+				functions.insert(name.to_string(), Function { arg_types: &args.1, return_type });
+				current_function.return_type = return_type.clone();
 			},
 			/* --------------------------- */
 			/*     function prototypes     */
@@ -197,7 +199,7 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 			/* -------------------------- */
 			/*      function calling      */
 			/* -------------------------- */
-			AstType::FunctionCall(name, args) => {
+			FunctionCall(name, args) => {
 				call_function(name, args, 
 					&functions, 
 					&mut current_function, 
@@ -208,6 +210,25 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 				)?;
 				textsect.push('\n');
 			},
+			/* ------------------------ */
+			/*    function returning    */
+			/* ------------------------ */
+			ReturnStatement(expr) => {
+				let return_type = match current_function.return_type {
+					Some(ref x) => x,
+					None => return Err((String::from("attempted to return from function that does not return anything, did you forget to specify the return type in the signature?"), line))
+				};
+
+				let value = match expr {
+					Numerical(num) => num.to_owned(),
+					_ => todo!("you can only return numbers from functions for now"),
+				};
+
+				let (word, _) = get_size_of_type(return_type, line)?;
+				let accumulator = get_accumulator(word);
+
+				textsect.push_str(&format!("\tmov {accumulator}, {word} {value}\n"));
+			}
 			/* -------------------------- */
 			/*        function end        */
 			/* -------------------------- */

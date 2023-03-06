@@ -6,10 +6,12 @@ use expressions::Expression;
 
 #[derive(Debug)]
 pub enum AstType<'a> {
-	/* function name, tuple of vectors, first vector holds names, second one holds types */
-	FunctionDefinition(&'a str, (Vec<String>, Vec<String>)),
+	/* function name, tuple of vectors, first vector holds names, second one holds types, return type */
+	FunctionDefinition(&'a str, (Vec<String>, Vec<String>), Option<String>),
 	/* function name, vector of types that the function accepts, return type */
 	FunctionPrototype(&'a str, Vec<String>, Option<String>),
+	/* expression */
+	ReturnStatement(Expression),
 	/* variable name, type, and initializer value */
 	VariableDefinition(&'a str, &'a str, Expression),
 	/* macro name, arguments */
@@ -28,7 +30,7 @@ pub fn process_function_parmaters(iter: &mut core::slice::Iter<TokenType>, line:
 	/* iterate over tokens and push the arguments to 'arguments' vector */
 	while let Some(i) = iter.next() {
 		match (i) {						
-			StringLiteral(_) | IntLiteral(_) | Identifier(_) => arguments.push(expressions::eval_expression(i, iter, line)?),
+			StringLiteral(_) | IntLiteral(_) | Identifier(_) => arguments.push(expressions::determine_expression(i, iter, line)?),
 			
 			Operator(',') | Newline => (),
 
@@ -159,9 +161,41 @@ pub fn parse(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 						err => return Err((format!("expected either an operator ')', operator '{{' or identifier in function definition of '{function_name}', but got {} instead", lexer::token_to_string(err)), line))
 					}
 				}
+
+				let mut return_type: Option<String> = None;
+
+				/* determine return type */
+				if let Some(Operator('-')) = iter.next() {
+					/* check for > */
+					match iter.next() {
+						Some(Operator('>')) => (),
+						
+						Some(x) => return Err((format!("expected operator '>' after operator '-' in function prototype of '{function_name}', but got {} instead", lexer::token_to_string(x)), line)),
+						None => return Err((format!("expected operator '>' after operator '-' in function prototype of '{function_name}'"), line)),
+					}
+
+					/* now get the actual return type */
+					return_type = match iter.next() {
+						Some(Identifier(x)) => Some(x.to_owned()),
+
+						_ => return Err((format!("expected return type after '->' in function prototype of '{function_name}'"), line))
+					}
+				}
 				
-				ast.push(AstType::FunctionDefinition(function_name, (arg_names, arg_types)));
+				ast.push(AstType::FunctionDefinition(function_name, (arg_names, arg_types), return_type));
 			},
+			/* ------------------------ */
+			/*    function returning    */
+			/* ------------------------ */
+			Keyword(keyword) if keyword == "return" => {
+				let return_expr = expressions::determine_expression(match iter.next() {
+					Some(x) => x,
+					None => return Err(("expected an expression after return keyword".to_owned(), line))
+				}, &mut iter, line)?;
+
+				/* push everything to the AST */
+				ast.push(AstType::ReturnStatement(return_expr));
+			}
 			/* --------------------------- */
 			/*    variable declerations    */
 			/* --------------------------- */
@@ -191,7 +225,7 @@ pub fn parse(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 				};
 
 				/* get initializer value */
-				let intializer_value = expressions::eval_expression(match iter.next() {
+				let intializer_value = expressions::determine_expression(match iter.next() {
 					Some(x) => x,
 					None => return Err(("expected an initializer value in variable decleration".to_owned(), line))
 				}, &mut iter, line)?;

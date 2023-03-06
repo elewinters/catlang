@@ -21,7 +21,7 @@ pub fn expression_to_string(token: &Expression) -> String {
 	}
 }
 
-pub fn eval_expression(token: &TokenType, iter: &mut core::slice::Iter<TokenType>, line: i64) -> Result<Expression, (String, i64)> {
+pub fn determine_expression(token: &TokenType, iter: &mut core::slice::Iter<TokenType>, line: i64) -> Result<Expression, (String, i64)> {
 	let mut peekable = iter.peekable();
 	match token {
 		IntLiteral(x) => {

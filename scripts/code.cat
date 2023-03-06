@@ -1,4 +1,5 @@
 extern puts(i64);
+extern printf(i64, i32);
 
 extern strcpy(i64, i64);
 
@@ -8,14 +9,21 @@ extern free(i64);
 extern exit(i32);
 extern system(i32);
 
+fn number() -> i32 {
+	puts("gonna return a number :D")'
+
+	return 5 + 5;
+}
+
+fn void() -> i32 {
+	return 5;
+}
+
 fn main() {
-	let mem: i64 = malloc(50);
-	strcpy(mem, "Hello, world!")
+	let num: i32 = number();
 
-	puts(mem);
-
-	let literal: i32 = "/bin/sh";
-	system(literal);
+	asm!("xor rax, rax");
+	printf("%d\n", num);
 
 	exit(0);
 }
