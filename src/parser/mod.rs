@@ -58,67 +58,9 @@ pub fn parse(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 			},
 			/* scope end */
 			Operator('}') => ast.push(AstType::ScopeEnd),
-			/* --------------------------- */
-			/*     function prototypes     */
-			/* --------------------------- */
-			Keyword(keyword) if keyword == "extern" => {
-				let function_name = match iter.next() {
-					Some(Identifier(x)) => x,
-					_ => return Err(("expected identifier after extern keyword".to_owned(), line))
-				};
-
-				/* check for ( */
-				match iter.next() {
-					Some(Operator('(')) => (),
-					_ => return Err((format!("in function prototype of {function_name}, expected ( after the function name"), line))
-				}
-
-				let mut arg_types: Vec<String> = Vec::new();
-
-				while let Some(i) = iter.next() {
-					match i {
-						Identifier(argtype) => {
-							arg_types.push(argtype.to_owned()); 
-
-							match iter.next() {
-								Some(Operator(',')) => (),
-								Some(Operator(')')) => break,
-
-								Some(x) => return Err((format!("in function prototype of '{function_name}', expected a comma after paramater type '{argtype}', but got {} instead", lexer::token_to_string(x)), line)),
-								_ => return Err((format!("in function prototype of '{function_name}', expected a comma after paramater type '{argtype}'"), line))
-							}
-						}
-
-						Operator(')') => break,
-						err => return Err((format!("expected either an operator ')', operator ';', newline or identifier in function prototype of '{function_name}', but got {} instead", lexer::token_to_string(err)), line))
-					}
-				}
-
-				let mut return_type: Option<String> = None;
-				
-				/* determine return type */
-				if let Some(Operator('-')) = iter.next() {
-					/* check for > */
-					match iter.next() {
-						Some(Operator('>')) => (),
-						
-						Some(x) => return Err((format!("expected operator '>' after operator '-' in function prototype of '{function_name}', but got {} instead", lexer::token_to_string(x)), line)),
-						None => return Err((format!("expected operator '>' after operator '-' in function prototype of '{function_name}'"), line)),
-					}
-
-					/* now get the actual return type */
-					return_type = match iter.next() {
-						Some(Identifier(x)) => Some(x.to_owned()),
-
-						_ => return Err((format!("expected return type after '->' in function prototype of '{function_name}'"), line))
-					}
-				}
-				
-				ast.push(AstType::FunctionPrototype(function_name, arg_types, return_type));
-			}
-			/* ---------------------------- */
-			/*     function definitions     */
-			/* ---------------------------- */
+			/* ------------------------------------- */
+			/*    function definitions/prototypes    */
+			/* ------------------------------------- */
 			Keyword(keyword) if keyword == "fn" => {
 				let function_name = match iter.next() {
 					Some(Identifier(x)) => x,
@@ -164,6 +106,7 @@ pub fn parse(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 				}
 
 				let mut return_type: Option<String> = None;
+				let mut is_proto = false;
 
 				/* determine return type */
 				match iter.next() {
@@ -185,15 +128,23 @@ pub fn parse(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 
 						match iter.next() {
 							Some(Operator('{')) => (),
+							Some(Operator(';')) | Some(Newline) => is_proto = true,
+
 							/* unwrap will never panic here */
-							_ => return Err((format!("expected '{{' after '-> {}'", return_type.unwrap()), line))
+							_ => return Err((format!("expected '{{' after '-> {}', or a ';'/newline if this is a function prototype", return_type.unwrap()), line))
 						}
 					}
 					Some(Operator('{')) => (),
-					_ => return Err((format!("expected either '{{' or '->' after the paramater list of '{function_name}'"), line))
+					Some(Operator(';')) | Some(Newline) => is_proto = true,
+					_ => return Err((format!("expected either '{{', '->', ';' or a newline after the paramater list of '{function_name}'"), line))
 				}
 				
-				ast.push(AstType::FunctionDefinition(function_name, (arg_names, arg_types), return_type));
+				if (!is_proto) {
+					ast.push(AstType::FunctionDefinition(function_name, (arg_names, arg_types), return_type));
+				}
+				else {
+					ast.push(AstType::FunctionPrototype(function_name, arg_types, return_type));
+				}
 			},
 			/* ------------------------ */
 			/*    function returning    */

@@ -1,14 +1,14 @@
-extern puts(i64);
-extern printf(i64, i64);
+fn puts(a: i64);
+fn printf(fmt: i64, n: i64);
 
-extern strlen(i64) -> i64;
-extern strcpy(i64, i64);
+fn strlen(p: i64) -> i64;
+fn strcpy(dest: i64, src: i64);
 
-extern malloc(i64) -> i64;
-extern free(i64);
+fn malloc(size: i64) -> i64;
+fn free(mem: i64);
 
-extern exit(i32);
-extern system(i32);
+fn exit(code: i32);
+fn system(ptr: i64);
 
 fn number() -> i64 {
 	puts("gonna return a number :D");
