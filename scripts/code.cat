@@ -1,6 +1,7 @@
 extern puts(i64);
-extern printf(i64, i32);
+extern printf(i64, i64);
 
+extern strlen(i64) -> i64;
 extern strcpy(i64, i64);
 
 extern malloc(i64) -> i64;
@@ -9,21 +10,32 @@ extern free(i64);
 extern exit(i32);
 extern system(i32);
 
-fn number() -> i32 {
-	puts("gonna return a number :D")'
+fn number() -> i64 {
+	puts("gonna return a number :D");
 
 	return 5 + 5;
 }
 
-fn void() -> i32 {
-	return 5;
+fn hello_str() -> i64 {
+	let str: i64 = malloc(15);
+	strcpy(str, "Hello, world!");
+
+	return str;
 }
 
 fn main() {
-	let num: i32 = number();
+	let num: i64 = number();
 
 	asm!("xor rax, rax");
-	printf("%d\n", num);
+	printf("%ld\n", num);
+
+	let len: i64 = strlen("test");
+	
+	asm!("xor rax, rax");
+	printf("lenght of 'test': %ld\n", len);
+
+	let str: i64 = hello_str();
+	puts(str);
 
 	exit(0);
 }

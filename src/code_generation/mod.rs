@@ -3,7 +3,7 @@ use std::collections::HashMap;
 mod registers;
 
 use crate::parser::AstType::{self, *};
-use crate::parser::expressions;
+use crate::parser::expressions::{self, Expression};
 use crate::parser::expressions::Expression::*;
 
 use registers::*;
@@ -43,6 +43,69 @@ fn resolve_string_literal(datasect: &mut String, literal: &str) -> String {
 		LITERALS_AMOUNT += 1;
 
 		format!("L{}", LITERALS_AMOUNT - 1)
+	}
+}
+
+/* evaluates an expression and returns the address/register of the result */
+fn eval_expression(
+	expr: &Expression,
+	expected_type: &str, /* the type that we expect this expression to eval to (i32, i64, etc) */
+	current_function: &mut FunctionState, 
+	functions: &HashMap<String, Function>,
+
+	datasect: &mut String, 
+	textsect: &mut String,
+
+	line: i64
+) -> Result<String, (String, i64)> {
+	match (expr) {
+		Numerical(x) => Ok(x.to_string()),
+		StringLiteral(x) => Ok(resolve_string_literal(datasect, x)),
+		Variable(varname) => {
+			/* we move the variable to a temporary register and then pass that into add_variable */
+			/* we have to use a temp register because we can't mov a memory location to another memory location obv */
+			let var = match current_function.local_variables.get(varname) {
+				Some(x) => x,
+				None => return Err((format!("attempted to create variable with initializer value of variable '{varname}', but such variable does not exist"), line))
+			};
+
+			/* mismatch in types */
+			if (var.vartype != expected_type) {
+				return Err((format!("expected expression to evaluate to type '{expected_type}', but the type of '{varname}' is '{}'", var.vartype), line));
+			}
+
+			let (word, _) = get_size_of_type(&var.vartype, line)?;
+			let register = get_accumulator(word);
+
+			textsect.push_str(&format!("\tmov {register}, {word} {}\n", var.addr));
+			
+			Ok(register.to_owned())
+		},
+		FunctionCallExpression(function_name, args) => {
+			call_function(function_name, args, 
+				functions, 
+				current_function, 
+				line, 
+				
+				textsect, 
+				datasect
+			)?;
+			
+			/* this unwrap will never fail because call_function will have handled it already at this point */
+			let function = functions.get(function_name).unwrap();
+
+			let return_type = match function.return_type {
+				Some(x) => x,
+				None => return Err((format!("attempted to get return value of function '{function_name}', but it does not return anything"), line))
+			};
+
+			if (return_type != expected_type) {
+				return Err((format!("expected expression to evaluate to '{expected_type}', but the return type of '{function_name}' is '{return_type}'"), line));
+			}
+
+			let (word, _) = get_size_of_type(return_type, line)?;
+			Ok(get_accumulator(word).to_owned())
+		}
 	}
 }
 
@@ -215,19 +278,31 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 			/* ------------------------ */
 			ReturnStatement(expr) => {
 				let return_type = match current_function.return_type {
-					Some(ref x) => x,
+					Some(ref x) => x.clone(),
 					None => return Err((String::from("attempted to return from function that does not return anything, did you forget to specify the return type in the signature?"), line))
 				};
 
-				let value = match expr {
-					Numerical(num) => num.to_owned(),
-					_ => todo!("you can only return numbers from functions for now"),
-				};
+				let return_value = eval_expression(
+					expr, 
+					&return_type, 
+					
+					&mut current_function, 
+					&functions, 
+					
+					&mut datasect, 
+					&mut textsect, 
+					
+					line
+				)?;
 
-				let (word, _) = get_size_of_type(return_type, line)?;
+				let (word, _) = get_size_of_type(&return_type, line)?;
 				let accumulator = get_accumulator(word);
 
-				textsect.push_str(&format!("\tmov {accumulator}, {word} {value}\n"));
+				/* the return_value can sometimes be the accumulator */
+				/* which means that we'll be moving rax to rax, which is just unnecessary */
+				if (accumulator != return_value) {
+					textsect.push_str(&format!("\tmov {accumulator}, {word} {return_value}\n"));
+				}
 			}
 			/* -------------------------- */
 			/*        function end        */
@@ -253,55 +328,18 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 			/*    variable declerations    */
 			/* --------------------------- */
 			VariableDefinition(name, vartype, initval) => {
-				let initializer = match (initval) {
-					Numerical(x) => x.to_string(),
-					StringLiteral(x) => resolve_string_literal(&mut datasect, x),
-					Variable(varname) => {
-						/* we move the variable to a temporary register and then pass that into add_variable */
-						/* we have to use a temp register because we can't mov a memory location to another memory location obv */
-						let var = match current_function.local_variables.get(varname) {
-							Some(x) => x,
-							None => return Err((format!("attempted to create variable with initializer value of variable '{varname}', but such variable does not exist"), line))
-						};
+				let initializer = eval_expression(
+					initval, 
+					vartype, 
 
-						/* mismatch in types */
-						if (var.vartype != *vartype) {
-							return Err((format!("mismatch of types in variable decleration of '{name}', type of '{name}' is '{vartype}', yet the type that its being assigned to is the value of the variable '{varname}', which is of type '{}'", var.vartype), line));
-						}
+					&mut current_function, 
+					&functions, 
 
-						let (word, _) = get_size_of_type(&var.vartype, line)?;
-						let register = get_accumulator(word);
+					&mut datasect, 
+					&mut textsect, 
 
-						textsect.push_str(&format!("\tmov {register}, {word} {}\n", var.addr));
-						
-						register.to_owned()
-					},
-					FunctionCallExpression(function_name, args) => {
-						call_function(function_name, args, 
-							&functions, 
-							&mut current_function, 
-							line, 
-							
-							&mut textsect, 
-							&mut datasect
-						)?;
-						
-						/* this unwrap will never fail because call_function will have handled it already at this point */
-						let function = functions.get(function_name).unwrap();
-
-						let return_type = match function.return_type {
-							Some(x) => x,
-							None => return Err((format!("attempted to get return value of function '{function_name}', but it does not return anything"), line))
-						};
-
-						if (return_type != vartype) {
-							return Err((format!("attempted to assign return value of '{function_name}' to '{name}', but the return type of '{function_name}' is '{return_type}', while the type of the variable it was assigned to is '{vartype}'"), line));
-						}
-
-						let (word, _) = get_size_of_type(return_type, line)?;
-						get_accumulator(word).to_owned()
-					}
-				};
+					line
+				)?;
 
 				add_variable(
 					line,

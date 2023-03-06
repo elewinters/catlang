@@ -1,10 +1,11 @@
 section .data
-	L0: db `gonna return a number!`, 0
+	L0: db `gonna return a number :D`, 0
 	L1: db `Hello, world!`, 0
-	L2: db `/bin/sh`, 0
+	L2: db `%d\n`, 0
 section .text
 
 extern puts
+extern printf
 extern strcpy
 extern malloc
 extern free
@@ -15,14 +16,29 @@ number:
 	push rbp
 	mov rbp, rsp
 
-	mov rax, 1
-	mov rdi, 1
-	mov rsi, L0
-	mov rdx, 22
-	syscall
+	mov rdi, L0
+	call puts
 
-	mov eax, dword 5
+	mov eax, dword 5+5
 	pop rbp
+	ret
+
+global hello_str
+hello_str:
+	push rbp
+	mov rbp, rsp
+	sub rsp, 8
+
+	mov rdi, 15
+	call malloc
+	mov qword [rbp-8], rax
+
+	mov rdi, qword [rbp-8]
+	mov rsi, L1
+	call strcpy
+
+	mov rax, qword [rbp-8]
+	leave
 	ret
 
 global main
@@ -31,21 +47,19 @@ main:
 	mov rbp, rsp
 	sub rsp, 12
 
-	mov rdi, 50
-	call malloc
-	mov qword [rbp-8], rax
+	call number
+	mov dword [rbp-4], eax
 
-	mov rdi, qword [rbp-8]
-	mov rsi, L1
-	call strcpy
+	xor rax, rax
+	mov rdi, L2
+	mov esi, dword [rbp-4]
+	call printf
 
-	mov rdi, qword [rbp-8]
+	call hello_str
+	mov qword [rbp-12], rax
+
+	mov rdi, qword [rbp-12]
 	call puts
-
-	mov dword [rbp-12], L2
-
-	mov edi, dword [rbp-12]
-	call system
 
 	mov edi, 0
 	call exit
