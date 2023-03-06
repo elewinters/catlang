@@ -1,38 +1,33 @@
 section .data
-	L0: db `10`, 0
-	L1: db `%d\n`, 0
+	L0: db `Hello, world!`, 0
 section .text
 
 extern puts
-extern printf
-extern putchar
+extern strcpy
+extern malloc
+extern free
 extern exit
-extern atoi
 global main
 main:
 	push rbp
 	mov rbp, rsp
 	sub rsp, 8
 
-	mov edi, 65
-	call putchar
+	mov rdi, 50
+	call malloc
+	mov qword [rbp-8], rax
 
-	mov edi, 10
-	call putchar
+	mov rdi, qword [rbp-8]
+	mov rsi, L0
+	call strcpy
 
-	mov rdi, L0
-	call atoi
-	mov dword [rbp-4], eax
+	mov rdi, qword [rbp-8]
+	call puts
 
-	mov eax, dword [rbp-4]
-	mov dword [rbp-8], eax
+	mov rdi, qword [rbp-8]
+	call free
 
-	xor rax, rax
-	mov rdi, L1
-	mov esi, dword [rbp-8]
-	call printf
-
-	mov rdi, 0
+	mov edi, 0
 	call exit
 
 	leave

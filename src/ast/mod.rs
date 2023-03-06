@@ -56,6 +56,43 @@ pub fn ast(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 			},
 			/* scope end */
 			Operator('}') => ast.push(AstType::ScopeEnd),
+			/* --------------------------- */
+			/*     function prototypes     */
+			/* --------------------------- */
+			Keyword(keyword) if keyword == "extern" => {
+				let function_name = match iter.next() {
+					Some(Identifier(x)) => x,
+					_ => return Err(("expected identifier after extern keyword".to_owned(), line))
+				};
+
+				/* check for ( */
+				match iter.next() {
+					Some(Operator('(')) => (),
+					_ => return Err((format!("in function prototype of {function_name}, expected ( after the function name"), line))
+				}
+
+				let mut arg_types: Vec<String> = Vec::new();
+
+				while let Some(i) = iter.next() {
+					match i {
+						Identifier(argtype) => {
+							arg_types.push(argtype.to_owned()); 
+
+							match iter.next() {
+								Some(Operator(',')) | Some(Operator(')')) => (),
+
+								Some(x) => return Err((format!("in function prototype of '{function_name}', expected a comma after paramater type '{argtype}', but got {} instead", lexer::token_to_string(x)), line)),
+								_ => return Err((format!("in function prototype of '{function_name}', expected a comma after paramater type '{argtype}'"), line))
+							}
+						}
+
+						Operator(')') | Operator(';') | Newline => break,
+						err => return Err((format!("expected either an operator ')', operator ';', newline or identifier in function prototype of '{function_name}', but got {} instead", lexer::token_to_string(err)), line))
+					}
+				}
+				
+				ast.push(AstType::FunctionPrototype(function_name, arg_types));
+			}
 			/* ---------------------------- */
 			/*     function definitions     */
 			/* ---------------------------- */
@@ -71,15 +108,12 @@ pub fn ast(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 					_ => return Err((format!("in function definition of {function_name}, expected ( after the function name"), line))
 				}
 
+				/* add function arguments if they exist */
 				let mut arg_names: Vec<String> = Vec::new();
 				let mut arg_types: Vec<String> = Vec::new();
 
-				let mut is_proto: bool = false;
-
-				/* add function arguments if they exist */
 				while let Some(i) = iter.next() {
 					match i {
-						/* push arg_name: arg_type to vectors */
 						Identifier(varname) => {
 							match iter.next() {
 								Some(Operator(':')) => (),
@@ -92,46 +126,20 @@ pub fn ast(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 								_ => return Err((format!("expected a type after paramater name '{varname}' in function decleration of {function_name}"), line))
 							});
 
-							/* syntax error checks */
 							match iter.next() {
 								Some(Operator(',')) | Some(Operator(')')) => (),
 
 								Some(Operator('{')) => return Err((format!("unexpected opening curly brace '{{' in paramater list of function definition of {function_name}, did you forget to close the parentheses of the argument list?"), line)),
-								_ => return Err((format!("expected an operator ',', operator ')' or operator '{{' after paramater '{varname}'"), line))
+								_ => return Err((format!("expected a comma after paramater '{varname}'"), line))
 							}
 						}
-						
-						/* determine when to stop */
-						/* stuff for determining whether it's a prototype only happens here */
-						Operator('{') => {
-							is_proto = false; 
-							break;
-						},
-						Operator(')') => {
-							match iter.next() {
-								Some(Operator('{')) => is_proto = false,
-								Some(Operator(';')) | None => is_proto = true,
 
-								Some(x) => return Err((format!("expected either an operator '{{' or an operator ';' after operator ')', but got {} instead", lexer::token_to_string(x)), line))
-							}
-
-							break;
-						}
-						Operator(';') | Newline => {
-							is_proto = true; 
-							break;
-						}
-
-						err => return Err((format!("expected either an operator ')', operator '{{', operator ';', operator 'newline' or identifier in function definition of '{function_name}', but got {} instead", lexer::token_to_string(err)), line))
+						Operator(')') | Operator('{') => break,
+						err => return Err((format!("expected either an operator ')', operator '{{' or identifier in function definition of '{function_name}', but got {} instead", lexer::token_to_string(err)), line))
 					}
 				}
 				
-				if (!is_proto) {
-					ast.push(AstType::FunctionDefinition(function_name, (arg_names, arg_types)));
-				}
-				else {
-					ast.push(AstType::FunctionPrototype(function_name, arg_types));
-				}
+				ast.push(AstType::FunctionDefinition(function_name, (arg_names, arg_types)));
 			},
 			/* --------------------------- */
 			/*    variable declerations    */

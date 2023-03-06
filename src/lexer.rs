@@ -37,12 +37,15 @@ pub fn token_get_value(token: &TokenType) -> String {
 	}
 }
 
-const KEYWORDS: [&str; 2] = [
+const KEYWORDS: [&str; 3] = [
 	"let", 
-	"fn"
+	"fn",
+	"extern"
 ];
 
-const ESCAPE_CHARACTERS: [char; 8] = [
+const ESCAPE_CHARACTERS: [char; 10] = [
+	'<', 
+	'>', /* for the arrows in function returns (like -> i32) */
 	'(', 
 	')', 
 	',', 

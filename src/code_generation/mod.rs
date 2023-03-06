@@ -276,7 +276,7 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 						)?;
 
 						/* lets just assume all return types are ints for now */
-						get_accumulator("dword").to_owned()
+						get_accumulator("qword").to_owned()
 					}
 				};
 

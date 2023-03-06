@@ -1,19 +1,21 @@
-fn puts(str: i64);
-fn printf(fmt: i64, num: i32);
-fn putchar(c: i8);
-fn exit(exit_code: i64);
+extern puts(i64);
 
-fn atoi(a: i64);
+extern strcpy(i64, i64);
+
+extern malloc(i64);
+extern free(i64);
+
+extern exit(i32);
+extern system(i32);
 
 fn main() {
-	putchar(65); /* A */
-	putchar(10); /* newline */
+	let mem: i64 = malloc(50);
+	strcpy(mem, "Hello, world!")
 
-	let hello: i32 = atoi("10");
-	let hello2: i32 = hello;
+	puts(mem);
 
-	asm!("xor rax, rax");
-	printf("%d\n", hello2);
+	let literal: i32 = "/bin/sh";
+	system(literal);
 
 	exit(0);
 }
