@@ -62,7 +62,7 @@ fn resolve_string_literal(datasect: &mut String, literal: &str) -> String {
 
 /* evaluates an expression and returns the address/register of the result */
 /* expected_type is the type that we expect this expression to eval to (i32, i64, etc) */
-fn eval_expression(expr: &Expression, expected_type: &str, state: &mut State) -> Result<String, (String, i64)> {
+fn eval_expression(state: &mut State, expr: &Expression, expected_type: &str) -> Result<String, (String, i64)> {
 	match (expr) {
 		Numerical(x) => Ok(x.to_string()),
 		StringLiteral(x) => Ok(resolve_string_literal(&mut state.datasect, x)),
@@ -87,7 +87,7 @@ fn eval_expression(expr: &Expression, expected_type: &str, state: &mut State) ->
 			Ok(register.to_owned())
 		},
 		FunctionCallExpression(function_name, args) => {
-			call_function(function_name, args, state)?;
+			call_function(state, function_name, args)?;
 			
 			/* this unwrap will never fail because call_function will have handled it already at this point */
 			let function = state.functions.get(function_name).unwrap();
@@ -108,7 +108,7 @@ fn eval_expression(expr: &Expression, expected_type: &str, state: &mut State) ->
 }
 
 /* adds a variable to the local_variables hashmap */
-fn add_variable(name: &str, vartype: &str, initval: Option<&str>, state: &mut State) -> Result<(), (String, i64)> {
+fn add_variable(state: &mut State, name: &str, vartype: &str, initval: Option<&str>) -> Result<(), (String, i64)> {
 	/* we dont make the 2nd value '_' for once! */
 	let (word, bytesize) = get_size_of_type(vartype, state.line)?;
 	state.current_function.stacksize += bytesize;
@@ -126,7 +126,7 @@ fn add_variable(name: &str, vartype: &str, initval: Option<&str>, state: &mut St
 	Ok(())
 }
 
-fn call_function(name: &str, args: &Vec<Expression>, state: &mut State) -> Result<(), (String, i64)> {
+fn call_function(state: &mut State, name: &str, args: &Vec<Expression>) -> Result<(), (String, i64)> {
 	let function = match state.functions.get(name) {
 		Some(x) => x,
 		None => return Err((format!("undefined function '{name}'"), state.line))
@@ -221,7 +221,7 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 					let (word, _) = get_size_of_type(&args.1[i], state.line)?;
 					let register32 = get_register_32_or_64(i, &word, state.line)?;
 
-					add_variable(&args.0[i], &args.1[i], Some(register32), &mut state)?;
+					add_variable(&mut state, &args.0[i], &args.1[i], Some(register32))?;
 				}
 				
 				state.functions.insert(name.to_string(), Function { arg_types: &args.1, return_type });
@@ -239,7 +239,7 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 			/*      function calling      */
 			/* -------------------------- */
 			FunctionCall(name, args) => {
-				call_function(name, args, &mut state)?;
+				call_function(&mut state, name, args)?;
 				state.textsect.push('\n');
 			},
 			/* ------------------------ */
@@ -251,7 +251,7 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 					None => return Err((String::from("attempted to return from function that does not return anything, did you forget to specify the return type in the signature?"), state.line))
 				};
 
-				let return_value = eval_expression(expr, &return_type, &mut state)?;
+				let return_value = eval_expression(&mut state, expr, &return_type)?;
 
 				let (word, _) = get_size_of_type(&return_type, state.line)?;
 				let accumulator = get_accumulator(&word);
@@ -286,9 +286,9 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 			/*    variable declerations    */
 			/* --------------------------- */
 			VariableDefinition(name, vartype, initval) => {
-				let initializer = eval_expression(initval, vartype, &mut state)?;
+				let initializer = eval_expression(&mut state, initval, vartype)?;
 
-				add_variable(name, vartype, Some(&initializer), &mut state)?;
+				add_variable(&mut state, name, vartype, Some(&initializer))?;
 
 				state.textsect.push('\n');
 			},
