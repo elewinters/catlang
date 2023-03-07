@@ -10,6 +10,8 @@ fn free(mem: i64);
 fn exit(code: i32);
 fn system(ptr: i64);
 
+fn scanf(fmt: i64, buf: i64);
+
 fn number() -> i64 {
 	puts("gonna return a number :D");
 
@@ -50,6 +52,12 @@ fn main() {
 
 	let str: i64 = hello_str();
 	puts(str);
+	free(str);
+
+	let inputbuf: i64 = malloc(128);
+	scanf("%s", inputbuf);
+
+	puts(inputbuf);	
 
 	exit(0);
 }

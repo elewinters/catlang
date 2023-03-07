@@ -5,6 +5,7 @@ section .data
 	L3: db `%ld\n`, 0
 	L4: db `test`, 0
 	L5: db `lenght of 'test': %ld\n`, 0
+	L6: db `%s`, 0
 section .text
 
 extern puts
@@ -15,6 +16,7 @@ extern malloc
 extern free
 extern exit
 extern system
+extern scanf
 global number
 number:
 	push rbp
@@ -77,7 +79,8 @@ sum:
 
 	mov qword [rbp-8], rdi
 	mov qword [rbp-16], rsi
-	mov rax, [rdi+rsi]
+	mov rax, rdi
+	add rax, rsi
 	pop rbp
 	ret
 
@@ -85,7 +88,7 @@ global main
 main:
 	push rbp
 	mov rbp, rsp
-	sub rsp, 24
+	sub rsp, 32
 
 	mov edi, 1
 	call void
@@ -113,6 +116,20 @@ main:
 	mov qword [rbp-24], rax
 
 	mov rdi, qword [rbp-24]
+	call puts
+
+	mov rdi, qword [rbp-24]
+	call free
+
+	mov rdi, 128
+	call malloc
+	mov qword [rbp-32], rax
+
+	mov rdi, L6
+	mov rsi, qword [rbp-32]
+	call scanf
+
+	mov rdi, qword [rbp-32]
 	call puts
 
 	mov edi, 0

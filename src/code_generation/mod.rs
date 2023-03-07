@@ -3,13 +3,11 @@ use std::collections::HashMap;
 mod registers;
 
 use crate::parser::AstType::{self, *};
-use crate::parser::expressions::{self, Expression};
-use crate::parser::expressions::Expression::*;
+use crate::parser::expressions::Expression::{self, *};
 
 use registers::*;
 use registers::WordType::*;
 
-/* this will have more fields in the future, like the return value */
 struct Function<'a> {
 	arg_types: &'a Vec<String>, /* types of paramaters, but not the names of the paramaters */
 	return_type: &'a Option<String>
@@ -20,8 +18,9 @@ struct Variable {
 	vartype: String
 }
 
-/* the mutable state of the current function */
+/* this contains all of the state of the current function we're working with */
 /* stuff like local variables, the size of the stack, etc */
+/* this will always be mutable, and there will always only be one instance of it */
 #[derive(Default)]
 struct FunctionState {
 	local_variables: HashMap<String, Variable>,
@@ -30,6 +29,20 @@ struct FunctionState {
 	stack_subtraction_index: usize,
 
 	calls_funcs: bool,
+}
+
+/* contains all of the state that this module needs to preserve */
+/* theres only ever one instance of this and its always mutable */
+/* the reason why these arent just regular mut variables in the generate() function is because passing all of them to functions is a fucking pain */
+/* so i turned them into a struct!! this is the cleanest way to do this i promise */
+struct State<'a> {
+	line: i64,
+
+	datasect: String,
+	textsect: String,
+
+	functions: HashMap<String, Function<'a>>,
+	current_function: FunctionState
 }
 
 /* given a string, this function will insert that string into the datasection */
@@ -48,88 +61,64 @@ fn resolve_string_literal(datasect: &mut String, literal: &str) -> String {
 }
 
 /* evaluates an expression and returns the address/register of the result */
-fn eval_expression(
-	expr: &Expression,
-	expected_type: &str, /* the type that we expect this expression to eval to (i32, i64, etc) */
-	current_function: &mut FunctionState, 
-	functions: &HashMap<String, Function>,
-
-	datasect: &mut String, 
-	textsect: &mut String,
-
-	line: i64
-) -> Result<String, (String, i64)> {
+/* expected_type is the type that we expect this expression to eval to (i32, i64, etc) */
+fn eval_expression(expr: &Expression, expected_type: &str, state: &mut State) -> Result<String, (String, i64)> {
 	match (expr) {
 		Numerical(x) => Ok(x.to_string()),
-		StringLiteral(x) => Ok(resolve_string_literal(datasect, x)),
+		StringLiteral(x) => Ok(resolve_string_literal(&mut state.datasect, x)),
 		Variable(varname) => {
 			/* we move the variable to a temporary register and then pass that into add_variable */
 			/* we have to use a temp register because we can't mov a memory location to another memory location obv */
-			let var = match current_function.local_variables.get(varname) {
+			let var = match state.current_function.local_variables.get(varname) {
 				Some(x) => x,
-				None => return Err((format!("attempted to create variable with initializer value of variable '{varname}', but such variable does not exist"), line))
+				None => return Err((format!("attempted to create variable with initializer value of variable '{varname}', but such variable does not exist"), state.line))
 			};
 
 			/* mismatch in types */
 			if (var.vartype != expected_type) {
-				return Err((format!("expected expression to evaluate to type '{expected_type}', but the type of '{varname}' is '{}'", var.vartype), line));
+				return Err((format!("expected expression to evaluate to type '{expected_type}', but the type of '{varname}' is '{}'", var.vartype), state.line));
 			}
 
-			let (word, _) = get_size_of_type(&var.vartype, line)?;
+			let (word, _) = get_size_of_type(&var.vartype, state.line)?;
 			let register = get_accumulator(&word);
 
-			textsect.push_str(&format!("\tmov {register}, {word} {}\n", var.addr));
+			state.textsect.push_str(&format!("\tmov {register}, {word} {}\n", var.addr));
 			
 			Ok(register.to_owned())
 		},
 		FunctionCallExpression(function_name, args) => {
-			call_function(function_name, args, 
-				functions, 
-				current_function, 
-				line, 
-				
-				textsect, 
-				datasect
-			)?;
+			call_function(function_name, args, state)?;
 			
 			/* this unwrap will never fail because call_function will have handled it already at this point */
-			let function = functions.get(function_name).unwrap();
+			let function = state.functions.get(function_name).unwrap();
 
 			let return_type = match function.return_type {
 				Some(x) => x,
-				None => return Err((format!("attempted to get return value of function '{function_name}', but it does not return anything"), line))
+				None => return Err((format!("attempted to get return value of function '{function_name}', but it does not return anything"), state.line))
 			};
 
 			if (return_type != expected_type) {
-				return Err((format!("expected expression to evaluate to '{expected_type}', but the return type of '{function_name}' is '{return_type}'"), line));
+				return Err((format!("expected expression to evaluate to '{expected_type}', but the return type of '{function_name}' is '{return_type}'"), state.line));
 			}
 
-			let (word, _) = get_size_of_type(return_type, line)?;
+			let (word, _) = get_size_of_type(return_type, state.line)?;
 			Ok(get_accumulator(&word).to_owned())
 		}
 	}
 }
 
 /* adds a variable to the local_variables hashmap */
-fn add_variable(
-	line: i64,
-	function_state: &mut FunctionState,
+fn add_variable(name: &str, vartype: &str, initval: Option<&str>, state: &mut State) -> Result<(), (String, i64)> {
+	/* we dont make the 2nd value '_' for once! */
+	let (word, bytesize) = get_size_of_type(vartype, state.line)?;
+	state.current_function.stacksize += bytesize;
 
-	textsect: &mut String,
-
-	name: &str, 
-	vartype: &str, 
-	initval: Option<&str>
-) -> Result<(), (String, i64)> {
-	let (word, bytesize) = get_size_of_type(vartype, line)?;
-	function_state.stacksize += bytesize;
-
-	let addr = format!("[rbp-{}]", function_state.stacksize);
+	let addr = format!("[rbp-{}]", state.current_function.stacksize);
 	if let Some(initval) = initval {
-		textsect.push_str(&format!("\tmov {word} {addr}, {initval}\n"));
+		state.textsect.push_str(&format!("\tmov {word} {addr}, {initval}\n"));
 	}
 
-	function_state.local_variables.insert(name.to_string(), Variable {
+	state.current_function.local_variables.insert(name.to_string(), Variable {
 		addr, 
 		vartype: vartype.to_owned() 
 	});
@@ -137,22 +126,10 @@ fn add_variable(
 	Ok(())
 }
 
-fn call_function(
-	name: &str, 
-	args: &Vec<expressions::Expression>, 
-
-	functions: &HashMap<String, Function>,
-	current_function: &mut FunctionState,
-
-	line: i64,
-
-	textsect: &mut String,
-	datasect: &mut String
-
-) -> Result<(), (String, i64)> {
-	let function = match functions.get(name) {
+fn call_function(name: &str, args: &Vec<Expression>, state: &mut State) -> Result<(), (String, i64)> {
+	let function = match state.functions.get(name) {
 		Some(x) => x,
-		None => return Err((format!("undefined function '{name}'"), line))
+		None => return Err((format!("undefined function '{name}'"), state.line))
 	};
 
 	if (args.len() != function.arg_types.len()) {
@@ -162,54 +139,54 @@ fn call_function(
 		} 
 		else {
 			"were"
-		}), line))
+		}), state.line))
 	}
 
 	/* insert arguments to their respective registers */
 	for (i, v) in args.iter().enumerate() {
 		match (v) {
 			Numerical(x) => {
-				let (word, _) = get_size_of_type(&function.arg_types[i], line)?;
-				let register = get_register(i, &word, line)?;
+				let (word, _) = get_size_of_type(&function.arg_types[i], state.line)?;
+				let register = get_register(i, &word, state.line)?;
 
-				textsect.push_str(&format!("\tmov {register}, {x}\n"));
+				state.textsect.push_str(&format!("\tmov {register}, {x}\n"));
 			},
 			StringLiteral(x) => {
-				let register = get_register(i, &QuadWord, line)?;
-				let identifier = resolve_string_literal(datasect, x);
+				let register = get_register(i, &QuadWord, state.line)?;
+				let identifier = resolve_string_literal(&mut state.datasect, x);
 
-				textsect.push_str(&format!("\tmov {register}, {identifier}\n"));
+				state.textsect.push_str(&format!("\tmov {register}, {identifier}\n"));
 			},
 			Variable(varname) => { 
-				match current_function.local_variables.get(varname) {
+				match state.current_function.local_variables.get(varname) {
 					Some(var) => {
 						if (function.arg_types[i] != var.vartype) {
-							return Err((format!("function '{name}' accepts type {} as paramater {} but the type of '{varname}' is {}", function.arg_types[i], i + 1, var.vartype), line))
+							return Err((format!("function '{name}' accepts type {} as paramater {} but the type of '{varname}' is {}", function.arg_types[i], i + 1, var.vartype), state.line))
 						}
 
-						let (word, _) = get_size_of_type(&var.vartype, line)?;
-						let register = get_register(i, &word, line)?;
+						let (word, _) = get_size_of_type(&var.vartype, state.line)?;
+						let register = get_register(i, &word, state.line)?;
 
 						match (word) {
 							DoubleWord | QuadWord => {
-								textsect.push_str(&format!("\tmov {register}, {word} {}\n", var.addr))
+								state.textsect.push_str(&format!("\tmov {register}, {word} {}\n", var.addr))
 							},
 							_ => {
-								let register32 = get_register(i, &DoubleWord, line)?;
-								textsect.push_str(&format!("\tmovsx {register32}, {word} {}\n", var.addr));
+								let register32 = get_register(i, &DoubleWord, state.line)?;
+								state.textsect.push_str(&format!("\tmovsx {register32}, {word} {}\n", var.addr));
 							}
 						}
 					},
-					None => return Err((format!("variable '{varname}' is not defined in the current scope"), line))
+					None => return Err((format!("variable '{varname}' is not defined in the current scope"), state.line))
 				}
 			},
 
-			err => return Err((format!("expected either an int literal, string literal or identifier in call to function '{name}', but got {err}"), line))
+			err => return Err((format!("expected either an int literal, string literal or identifier in call to function '{name}', but got {err}"), state.line))
 		};
 	}
 	
-	textsect.push_str(&format!("\tcall {name}\n"));
-	current_function.calls_funcs = true;
+	state.textsect.push_str(&format!("\tcall {name}\n"));
+	state.current_function.calls_funcs = true;
 
 	Ok(())
 }
@@ -218,142 +195,102 @@ fn call_function(
 pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 	let iter = input.iter();
 
-	let mut line: i64 = 1;
+	let mut state = State {
+		line: 1,
+		datasect: String::from("section .data\n"),
+		textsect: String::from("section .text\n\n"),
 
-	let mut datasect = String::from("section .data\n");
-	let mut textsect = String::from("section .text\n\n");
-
-	let mut functions: HashMap<String, Function> = HashMap::new();
-	let mut current_function = FunctionState::default();
+		functions: HashMap::new(),
+		current_function: FunctionState::default()
+	};
 
 	for i in iter {
 		match i {
-			AstType::Newline => line += 1,
+			AstType::Newline => state.line += 1,
 			/* ---------------------------- */
 			/*     function definitions     */
 			/* ---------------------------- */
 			FunctionDefinition(name, args, return_type) => {
-				textsect.push_str(&format!("global {name}\n{name}:\n"));
-				textsect.push_str("\tpush rbp\n\tmov rbp, rsp\n\n");
+				state.textsect.push_str(&format!("global {name}\n{name}:\n"));
+				state.textsect.push_str("\tpush rbp\n\tmov rbp, rsp\n\n");
 				
-				current_function.stack_subtraction_index = textsect.len() - 1;
+				state.current_function.stack_subtraction_index = state.textsect.len() - 1;
 
 				/* add arguments to the stack */
 				for i in 0..args.0.len() {
-					let (word, _) = get_size_of_type(&args.1[i], line)?;
-					add_variable(
-						line,
-	
-						&mut current_function,
-						&mut textsect, 
-	
-						&args.0[i], &args.1[i], Some(get_register_32_or_64(i, &word, line)?)
-					)?;
+					let (word, _) = get_size_of_type(&args.1[i], state.line)?;
+					let register32 = get_register_32_or_64(i, &word, state.line)?;
+
+					add_variable(&args.0[i], &args.1[i], Some(register32), &mut state)?;
 				}
 				
-				functions.insert(name.to_string(), Function { arg_types: &args.1, return_type });
-				current_function.return_type = return_type.clone();
+				state.functions.insert(name.to_string(), Function { arg_types: &args.1, return_type });
+				state.current_function.return_type = return_type.clone();
 			},
 			/* --------------------------- */
 			/*     function prototypes     */
 			/* --------------------------- */
 			FunctionPrototype(name, args, return_type) => {
-				textsect.push_str(&format!("extern {name}\n"));
+				state.textsect.push_str(&format!("extern {name}\n"));
 
-				functions.insert(name.to_string(), Function { arg_types: args, return_type });
+				state.functions.insert(name.to_string(), Function { arg_types: args, return_type });
 			}
 			/* -------------------------- */
 			/*      function calling      */
 			/* -------------------------- */
 			FunctionCall(name, args) => {
-				call_function(name, args, 
-					&functions, 
-					&mut current_function, 
-					line, 
-					
-					&mut textsect, 
-					&mut datasect
-				)?;
-				textsect.push('\n');
+				call_function(name, args, &mut state)?;
+				state.textsect.push('\n');
 			},
 			/* ------------------------ */
 			/*    function returning    */
 			/* ------------------------ */
 			ReturnStatement(expr) => {
-				let return_type = match current_function.return_type {
+				let return_type = match state.current_function.return_type {
 					Some(ref x) => x.clone(),
-					None => return Err((String::from("attempted to return from function that does not return anything, did you forget to specify the return type in the signature?"), line))
+					None => return Err((String::from("attempted to return from function that does not return anything, did you forget to specify the return type in the signature?"), state.line))
 				};
 
-				let return_value = eval_expression(
-					expr, 
-					&return_type, 
-					
-					&mut current_function, 
-					&functions, 
-					
-					&mut datasect, 
-					&mut textsect, 
-					
-					line
-				)?;
+				let return_value = eval_expression(expr, &return_type, &mut state)?;
 
-				let (word, _) = get_size_of_type(&return_type, line)?;
+				let (word, _) = get_size_of_type(&return_type, state.line)?;
 				let accumulator = get_accumulator(&word);
 
 				/* the return_value can sometimes be the accumulator */
 				/* which means that we'll be moving rax to rax, which is just unnecessary */
 				if (accumulator != return_value) {
-					textsect.push_str(&format!("\tmov {accumulator}, {word} {return_value}\n"));
+					state.textsect.push_str(&format!("\tmov {accumulator}, {word} {return_value}\n"));
 				}
 			}
 			/* -------------------------- */
 			/*        function end        */
 			/* -------------------------- */
 			ScopeEnd => {
-				if (current_function.calls_funcs && current_function.stacksize != 0) {
-					textsect.push_str("\tleave\n");
+				if (state.current_function.calls_funcs && state.current_function.stacksize != 0) {
+					state.textsect.push_str("\tleave\n");
 				}
 				else {
-					textsect.push_str("\tpop rbp\n");
+					state.textsect.push_str("\tpop rbp\n");
 				}
 				
 				/* we want to subtract the value of stackspace from rsp if we call other functions */
 				/* and if the aren't any local variables in the current function */
-				if (current_function.calls_funcs && current_function.stacksize != 0) {
-					textsect.insert_str(current_function.stack_subtraction_index, &format!("\tsub rsp, {}\n", current_function.stacksize));
+				if (state.current_function.calls_funcs && state.current_function.stacksize != 0) {
+					state.textsect.insert_str(state.current_function.stack_subtraction_index, &format!("\tsub rsp, {}\n", state.current_function.stacksize));
 				}
 
-				textsect.push_str("\tret\n\n");
-				current_function = FunctionState::default();
+				state.textsect.push_str("\tret\n\n");
+				state.current_function = FunctionState::default();
 			},
 			/* --------------------------- */
 			/*    variable declerations    */
 			/* --------------------------- */
 			VariableDefinition(name, vartype, initval) => {
-				let initializer = eval_expression(
-					initval, 
-					vartype, 
+				let initializer = eval_expression(initval, vartype, &mut state)?;
 
-					&mut current_function, 
-					&functions, 
+				add_variable(name, vartype, Some(&initializer), &mut state)?;
 
-					&mut datasect, 
-					&mut textsect, 
-
-					line
-				)?;
-
-				add_variable(
-					line,
-
-					&mut current_function,
-					&mut textsect, 
-
-					name, vartype, Some(&initializer)
-				)?;
-
-				textsect.push('\n');
+				state.textsect.push('\n');
 			},
 			/* -------------------------- */
 			/*           macros           */
@@ -361,50 +298,50 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 			MacroCall("asm!", args) => {
 				let instruction = match &args[0] {
 					StringLiteral(ref x) => x,
-					err => return Err((format!("expected token type to be a string literal, not {err}"), line))
+					err => return Err((format!("expected token type to be a string literal, not {err}"), state.line))
 				};
 
-				textsect.push_str(&format!("\t{}\n", instruction));
+				state.textsect.push_str(&format!("\t{}\n", instruction));
 			},
 			MacroCall("syscall!", args) => {
 				for (i, v) in args.iter().enumerate() {
 					let v = match (v) {
 						Numerical(x) => x.to_owned(),
-						StringLiteral(x) => resolve_string_literal(&mut datasect, x),
+						StringLiteral(x) => resolve_string_literal(&mut state.datasect, x),
 						Variable(varname) => { 
-							match current_function.local_variables.get(varname) {
+							match state.current_function.local_variables.get(varname) {
 								Some(var) => {
 									if (var.vartype != "i64") {
-										return Err((format!("syscall! macro only accepts arguments of type i64, yet type of '{varname}' is {}", var.vartype), line));
+										return Err((format!("syscall! macro only accepts arguments of type i64, yet type of '{varname}' is {}", var.vartype), state.line));
 									}
 									var.addr.clone()
 								}
-								None => return Err((format!("variable '{varname}' is not defined in the current scope"), line))
+								None => return Err((format!("variable '{varname}' is not defined in the current scope"), state.line))
 							}
 						},
 
-						err => return Err((format!("expected either an int literal, string literal or identifier in call to macro syscall!, but got {err}"), line))
+						err => return Err((format!("expected either an int literal, string literal or identifier in call to macro syscall!, but got {err}"), state.line))
 					};
 
 					match i {
-						0 => textsect.push_str(&format!("\tmov rax, {v}\n")),
-						1 => textsect.push_str(&format!("\tmov rdi, {v}\n")),
-						2 => textsect.push_str(&format!("\tmov rsi, {v}\n")),
-						3 => textsect.push_str(&format!("\tmov rdx, {v}\n")),
-						4 => textsect.push_str(&format!("\tmov r10, {v}\n")),
-						5 => textsect.push_str(&format!("\tmov r8, {v}\n")),
-						6 => textsect.push_str(&format!("\tmov r9, {v}\n")),
-						_ => return Err((String::from("syscall! does not take more than 7 arguments"), line))
+						0 => state.textsect.push_str(&format!("\tmov rax, {v}\n")),
+						1 => state.textsect.push_str(&format!("\tmov rdi, {v}\n")),
+						2 => state.textsect.push_str(&format!("\tmov rsi, {v}\n")),
+						3 => state.textsect.push_str(&format!("\tmov rdx, {v}\n")),
+						4 => state.textsect.push_str(&format!("\tmov r10, {v}\n")),
+						5 => state.textsect.push_str(&format!("\tmov r8, {v}\n")),
+						6 => state.textsect.push_str(&format!("\tmov r9, {v}\n")),
+						_ => return Err((String::from("syscall! does not take more than 7 arguments"), state.line))
 					}
 				}
 				
-				textsect.push_str("\tsyscall\n\n");
+				state.textsect.push_str("\tsyscall\n\n");
 			},
 			MacroCall(name, _) => {
-				return Err((format!("macro '{}' does not exist", name), line));
+				return Err((format!("macro '{}' does not exist", name), state.line));
 			},
 		}
 	}
 
-	Ok(datasect + &textsect)
+	Ok(state.datasect + &state.textsect)
 }
