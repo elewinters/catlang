@@ -1,86 +1,20 @@
 section .data
-	L0: db `gonna return a number :D`, 0
-	L1: db `Hello, world!`, 0
-	L2: db `void...`, 0
-	L3: db `%ld\n`, 0
-	L4: db `test`, 0
-	L5: db `lenght of 'test': %ld\n`, 0
-	L6: db `%s`, 0
+	L0: db `%d\n`, 0
 section .text
 
-extern puts
 extern printf
-extern strlen
-extern strcpy
-extern malloc
-extern free
 extern exit
-extern system
-extern scanf
-global number
-number:
-	push rbp
-	mov rbp, rsp
-
-	mov rdi, L0
-	call puts
-
-	mov rax, qword 5+5
-	pop rbp
-	ret
-
-global hello_str
-hello_str:
-	push rbp
-	mov rbp, rsp
-	sub rsp, 8
-
-	mov rdi, 15
-	call malloc
-	mov qword [rbp-8], rax
-
-	mov rdi, qword [rbp-8]
-	mov rsi, L1
-	call strcpy
-
-	mov rax, qword [rbp-8]
-	leave
-	ret
-
-global mystrlen
-mystrlen:
-	push rbp
-	mov rbp, rsp
-	sub rsp, 8
-
-	mov qword [rbp-8], rdi
-	mov rdi, qword [rbp-8]
-	call strlen
-	leave
-	ret
-
-global void
-void:
-	push rbp
-	mov rbp, rsp
-	sub rsp, 4
-
-	mov dword [rbp-4], edi
-	mov rdi, L2
-	call puts
-
-	leave
-	ret
-
+extern strlen
 global sum
 sum:
 	push rbp
 	mov rbp, rsp
 
-	mov qword [rbp-8], rdi
-	mov qword [rbp-16], rsi
-	mov rax, rdi
-	add rax, rsi
+	mov dword [rbp-4], edi
+	mov dword [rbp-8], esi
+	mov edx, [rbp-4]
+	add edx, [rbp-8]
+	mov eax, dword edx
 	pop rbp
 	ret
 
@@ -88,53 +22,27 @@ global main
 main:
 	push rbp
 	mov rbp, rsp
-	sub rsp, 32
+	sub rsp, 20
 
-	mov edi, 1
-	call void
+	mov rdx, 5
+	mov qword [rbp-8], rdx
 
-	mov rdi, 50
-	mov rsi, 50
+	mov rdx, 10
+	mov qword [rbp-16], rdx
+
+	mov edi, 5
+	mov esi, 5
 	call sum
-	mov qword [rbp-8], rax
+	mov edx, eax
+	mov dword [rbp-20], edx
 
 	xor rax, rax
-	mov rdi, L3
-	mov rsi, qword [rbp-8]
+	mov rdi, L0
+	mov esi, dword [rbp-20]
 	call printf
 
-	mov rdi, L4
-	call mystrlen
-	mov qword [rbp-16], rax
-
-	xor rax, rax
-	mov rdi, L5
-	mov rsi, qword [rbp-16]
-	call printf
-
-	call hello_str
-	mov qword [rbp-24], rax
-
-	mov rdi, qword [rbp-24]
-	call puts
-
-	mov rdi, qword [rbp-24]
-	call free
-
-	mov rdi, 128
-	call malloc
-	mov qword [rbp-32], rax
-
-	mov rdi, L6
-	mov rsi, qword [rbp-32]
-	call scanf
-
-	mov rdi, qword [rbp-32]
-	call puts
-
-	mov edi, 0
-	call exit
-
+	mov edx, 0
+	mov eax, dword edx
 	leave
 	ret
 

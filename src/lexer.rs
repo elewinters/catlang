@@ -1,6 +1,6 @@
 use std::fmt::{self, Display};
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum TokenType {
 	Keyword(String),
 	Identifier(String),

@@ -38,6 +38,15 @@ pub fn get_accumulator(word: &WordType) -> &'static str {
 	}
 }
 
+pub fn get_accumulator2(word: &WordType) -> &'static str {
+	match word {
+		Byte => "dl",
+		Word => "dx",
+		DoubleWord => "edx",
+		QuadWord => "rdx"
+	}
+}
+
 pub fn get_register(argument_count: usize, word: &WordType, line: i64) -> Result<&'static str, (String, i64)> {
     match (argument_count, word) {
         /* edi/rdi */

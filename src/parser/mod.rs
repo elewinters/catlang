@@ -3,6 +3,8 @@ use crate::lexer::TokenType::{self, *};
 pub mod expressions;
 use expressions::Expression;
 
+type NewExpression = Vec<TokenType>;
+
 #[derive(Debug)]
 pub enum AstType<'a> {
 	/* function name, tuple of vectors, first vector holds names, second one holds types, return type */
@@ -10,9 +12,9 @@ pub enum AstType<'a> {
 	/* function name, vector of types that the function accepts, return type */
 	FunctionPrototype(&'a str, Vec<String>, Option<String>),
 	/* expression */
-	ReturnStatement(Expression),
+	ReturnStatement(NewExpression),
 	/* variable name, type, and initializer value */
-	VariableDefinition(&'a str, &'a str, Expression),
+	VariableDefinition(&'a str, &'a str, NewExpression),
 	/* macro name, arguments */
 	MacroCall(&'a str, Vec<Expression>),
 	/* function name, arguments */
@@ -21,6 +23,19 @@ pub enum AstType<'a> {
 	ScopeEnd,
 	/* for counting the line number in parser.rs */
 	Newline
+}
+
+fn seperate_expression(iter: &mut core::slice::Iter<TokenType>) -> Vec<TokenType> {
+	let mut expression: Vec<TokenType> = Vec::new();
+
+	while let Some(i) = iter.next() {
+		if let Operator(';') = i {
+			break;
+		}
+		expression.push(i.clone());
+	}
+
+	expression
 }
 
 pub fn process_function_parmaters(iter: &mut core::slice::Iter<TokenType>, line: i64) -> Result<Vec<Expression>, (String, i64)> {
@@ -149,10 +164,7 @@ pub fn parse(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 			/*    function returning    */
 			/* ------------------------ */
 			Keyword(keyword) if keyword == "return" => {
-				let return_expr = expressions::determine_expression(match iter.next() {
-					Some(x) => x,
-					None => return Err(("expected an expression after return keyword".to_owned(), line))
-				}, &mut iter, line)?;
+				let return_expr = seperate_expression(&mut iter);
 
 				/* push everything to the AST */
 				ast.push(AstType::ReturnStatement(return_expr));
@@ -186,13 +198,10 @@ pub fn parse(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 				};
 
 				/* get initializer value */
-				let intializer_value = expressions::determine_expression(match iter.next() {
-					Some(x) => x,
-					None => return Err(("expected an initializer value in variable decleration".to_owned(), line))
-				}, &mut iter, line)?;
+				let initexpr = seperate_expression(&mut iter);
 
 				/* push everything to the AST */
-				ast.push(AstType::VariableDefinition(variable_name, variable_type, intializer_value));
+				ast.push(AstType::VariableDefinition(variable_name, variable_type, initexpr));
 			}
 			/* ---------------------------- */
 			/*    function/macro calling    */

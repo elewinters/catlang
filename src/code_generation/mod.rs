@@ -5,6 +5,9 @@ mod registers;
 use crate::parser::AstType::{self, *};
 use crate::parser::expressions::Expression::{self, *};
 
+use crate::lexer::TokenType;
+use crate::parser::process_function_parmaters;
+
 use registers::*;
 use registers::WordType::*;
 
@@ -60,51 +63,85 @@ fn resolve_string_literal(datasect: &mut String, literal: &str) -> String {
 	}
 }
 
-/* evaluates an expression and returns the address/register of the result */
-/* expected_type is the type that we expect this expression to eval to (i32, i64, etc) */
-fn eval_expression(state: &mut State, expr: &Expression, expected_type: &str) -> Result<String, (String, i64)> {
-	match (expr) {
-		Numerical(x) => Ok(x.to_string()),
-		StringLiteral(x) => Ok(resolve_string_literal(&mut state.datasect, x)),
-		Variable(varname) => {
-			/* we move the variable to a temporary register and then pass that into add_variable */
-			/* we have to use a temp register because we can't mov a memory location to another memory location obv */
-			let var = match state.current_function.local_variables.get(varname) {
-				Some(x) => x,
-				None => return Err((format!("attempted to create variable with initializer value of variable '{varname}', but such variable does not exist"), state.line))
-			};
+fn eval_expression(state: &mut State, expr: &Vec<TokenType>, expected_type: &str) -> Result<String, (String, i64)> {
+	let mut iter = expr.iter();
 
-			/* mismatch in types */
-			if (var.vartype != expected_type) {
-				return Err((format!("expected expression to evaluate to type '{expected_type}', but the type of '{varname}' is '{}'", var.vartype), state.line));
+	/* evaluates a token and returns its value */
+	fn eval_token(state: &mut State, iter: &mut core::slice::Iter<TokenType>, expected_type: &str) -> Result<String, (String, i64)> {
+		Ok(match (iter.next(), iter.clone().peekable().peek()) {
+			(Some(TokenType::IntLiteral(x)), _) => x.to_string(),
+			(Some(TokenType::StringLiteral(x)), _) => resolve_string_literal(&mut state.datasect, x),
+
+			/* function calls */
+			(Some(TokenType::Identifier(function_name)), Some(TokenType::Operator('('))) => {
+				iter.next(); /* strip ( */
+
+				let args = process_function_parmaters(iter, state.line)?;
+				call_function(state, function_name, &args)?;
+		
+				/* this unwrap will never fail because call_function will have handled it already at this point */
+				let function = state.functions.get(function_name).unwrap();
+	
+				let return_type = match function.return_type {
+					Some(x) => x,
+					None => return Err((format!("attempted to get return value of function '{function_name}', but it does not return anything"), state.line))
+				};
+	
+				if (return_type != expected_type) {
+					return Err((format!("expected expression to evaluate to '{expected_type}', but the return type of '{function_name}' is '{return_type}'"), state.line));
+				}
+	
+				let (word, _) = get_size_of_type(return_type, state.line)?;
+				get_accumulator(&word).to_owned()
 			}
 
-			let (word, _) = get_size_of_type(&var.vartype, state.line)?;
-			let register = get_accumulator(&word);
-
-			state.textsect.push_str(&format!("\tmov {register}, {word} {}\n", var.addr));
-			
-			Ok(register.to_owned())
-		},
-		FunctionCallExpression(function_name, args) => {
-			call_function(state, function_name, args)?;
-			
-			/* this unwrap will never fail because call_function will have handled it already at this point */
-			let function = state.functions.get(function_name).unwrap();
-
-			let return_type = match function.return_type {
-				Some(x) => x,
-				None => return Err((format!("attempted to get return value of function '{function_name}', but it does not return anything"), state.line))
-			};
-
-			if (return_type != expected_type) {
-				return Err((format!("expected expression to evaluate to '{expected_type}', but the return type of '{function_name}' is '{return_type}'"), state.line));
+			/* variables */
+			(Some(TokenType::Identifier(x)), _) => {
+				/* we move the variable to a temporary register and then pass that into add_variable */
+				/* we have to use a temp register because we can't mov a memory location to another memory location obv */
+				let var = match state.current_function.local_variables.get(x) {
+					Some(x) => x,
+					None => return Err((format!("variable '{x}' is not defined in the current scope"), state.line))
+				};
+	
+				/* mismatch in types */
+				if (var.vartype != expected_type) {
+					return Err((format!("expected expression to evaluate to type '{expected_type}', but the type of '{x}' is '{}'", var.vartype), state.line));
+				}
+	
+				var.addr.clone()
 			}
+			
+			(Some(x), _) => return Err((format!("expected int literal, string literal or identifier in expression, but got {x}"), state.line)),
+			(None, _) => return Err((format!("expected int literal, string literal, or identifier in expression, but got nothing"), state.line))
+		})
+	}
 
-			let (word, _) = get_size_of_type(return_type, state.line)?;
-			Ok(get_accumulator(&word).to_owned())
+	let (word, _) = get_size_of_type(expected_type, state.line)?;
+	let accumulator = get_accumulator2(&word);
+
+	let root_value = eval_token(state, &mut iter, expected_type)?;
+
+	/* sometimes the root value will be the accumulator, so we have to do this check to make sure we dont mov rax to rax */
+	if (root_value != accumulator) {
+		state.textsect.push_str(&format!("\tmov {accumulator}, {root_value}\n"));
+	}
+
+	while let Some(i) = iter.next() {
+		match i {
+			TokenType::Operator('+') => {
+				let val = eval_token(state, &mut iter, expected_type)?;
+				state.textsect.push_str(&format!("\tadd {accumulator}, {val}\n"));
+			},
+			TokenType::Operator('-') => {
+				let val = eval_token(state, &mut iter, expected_type)?;
+				state.textsect.push_str(&format!("\tsub {accumulator}, {val}\n"));
+			}
+			x => todo!("{}", x)
 		}
 	}
+
+	Ok(accumulator.to_owned())
 }
 
 /* adds a variable to the local_variables hashmap */
@@ -285,10 +322,10 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 			/* --------------------------- */
 			/*    variable declerations    */
 			/* --------------------------- */
-			VariableDefinition(name, vartype, initval) => {
-				let initializer = eval_expression(&mut state, initval, vartype)?;
-
-				add_variable(&mut state, name, vartype, Some(&initializer))?;
+			VariableDefinition(name, vartype, initexpr) => {
+				/* now we evaluate expression */
+				let value = eval_expression(&mut state, initexpr, vartype)?;
+				add_variable(&mut state, name, vartype, Some(&value))?;
 
 				state.textsect.push('\n');
 			},

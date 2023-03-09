@@ -1,63 +1,18 @@
-fn puts(a: i64);
-fn printf(fmt: i64, n: i64);
-
-fn strlen(p: i64) -> i64;
-fn strcpy(dest: i64, src: i64);
-
-fn malloc(size: i64) -> i64;
-fn free(mem: i64);
-
+fn printf(fmt: i64, n: i32);
 fn exit(code: i32);
-fn system(ptr: i64);
+fn strlen(ptr: i64) -> i32;
 
-fn scanf(fmt: i64, buf: i64);
-
-fn number() -> i64 {
-	puts("gonna return a number :D");
-
-	return 5 + 5;
+fn sum(x: i32, y: i32) -> i32 {
+	return x + y;
 }
 
-fn hello_str() -> i64 {
-	let str: i64 = malloc(15);
-	strcpy(str, "Hello, world!");
-
-	return str;
-}
-
-fn mystrlen(ptr: i64) -> i64 {
-	return strlen(ptr);
-}
-
-fn void(num: i32) {
-	puts("void...");
-}
-
-fn sum(x: i64, y: i64) -> i64 {
-	asm!("mov rax, rdi");
-	asm!("add rax, rsi");
-}
-
-fn main() {
-	void(1);
-	let num: i64 = sum(50, 50);
+fn main() -> i32 {
+	let x: i64 = 5;
+	let y: i64 = 10;
+	let num: i32 = sum(5, 5);
 
 	asm!("xor rax, rax");
-	printf("%ld\n", num);
+	printf("%d\n", num);
 
-	let len: i64 = mystrlen("test");
-	
-	asm!("xor rax, rax");
-	printf("lenght of 'test': %ld\n", len);
-
-	let str: i64 = hello_str();
-	puts(str);
-	free(str);
-
-	let inputbuf: i64 = malloc(128);
-	scanf("%s", inputbuf);
-
-	puts(inputbuf);	
-
-	exit(0);
+	return 0;
 }
