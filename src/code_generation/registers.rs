@@ -40,10 +40,10 @@ pub fn get_accumulator(word: &WordType) -> &'static str {
 
 pub fn get_accumulator2(word: &WordType) -> &'static str {
 	match word {
-		Byte => "dl",
-		Word => "dx",
-		DoubleWord => "edx",
-		QuadWord => "rdx"
+		Byte => "r11b",
+		Word => "r11w",
+		DoubleWord => "r11d",
+		QuadWord => "r11"
 	}
 }
 

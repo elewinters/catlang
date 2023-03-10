@@ -3,14 +3,12 @@ use std::collections::HashMap;
 mod registers;
 
 use crate::parser::AstType::{self, *};
-use crate::parser::expressions::Expression::{self, *};
+use crate::lexer::TokenType::{self, *};
 
-use crate::lexer::TokenType;
-use crate::parser::process_function_parmaters;
+use crate::parser::{process_function_parmaters, Expression};
 
 use registers::*;
-use registers::WordType::*;
-
+#[derive(Clone)]
 struct Function<'a> {
 	arg_types: &'a Vec<String>, /* types of paramaters, but not the names of the paramaters */
 	return_type: &'a Option<String>
@@ -63,17 +61,17 @@ fn resolve_string_literal(datasect: &mut String, literal: &str) -> String {
 	}
 }
 
-fn eval_expression(state: &mut State, expr: &Vec<TokenType>, expected_type: &str) -> Result<String, (String, i64)> {
+fn eval_expression(state: &mut State, expr: &[TokenType], expected_type: &str) -> Result<String, (String, i64)> {
 	let mut iter = expr.iter();
 
 	/* evaluates a token and returns its value */
 	fn eval_token(state: &mut State, iter: &mut core::slice::Iter<TokenType>, expected_type: &str) -> Result<String, (String, i64)> {
 		Ok(match (iter.next(), iter.clone().peekable().peek()) {
-			(Some(TokenType::IntLiteral(x)), _) => x.to_string(),
-			(Some(TokenType::StringLiteral(x)), _) => resolve_string_literal(&mut state.datasect, x),
+			(Some(IntLiteral(x)), _) => x.to_string(),
+			(Some(StringLiteral(x)), _) => resolve_string_literal(&mut state.datasect, x),
 
 			/* function calls */
-			(Some(TokenType::Identifier(function_name)), Some(TokenType::Operator('('))) => {
+			(Some(Identifier(function_name)), Some(Operator('('))) => {
 				iter.next(); /* strip ( */
 
 				let args = process_function_parmaters(iter, state.line)?;
@@ -96,7 +94,7 @@ fn eval_expression(state: &mut State, expr: &Vec<TokenType>, expected_type: &str
 			}
 
 			/* variables */
-			(Some(TokenType::Identifier(x)), _) => {
+			(Some(Identifier(x)), _) => {
 				/* we move the variable to a temporary register and then pass that into add_variable */
 				/* we have to use a temp register because we can't mov a memory location to another memory location obv */
 				let var = match state.current_function.local_variables.get(x) {
@@ -113,7 +111,7 @@ fn eval_expression(state: &mut State, expr: &Vec<TokenType>, expected_type: &str
 			}
 			
 			(Some(x), _) => return Err((format!("expected int literal, string literal or identifier in expression, but got {x}"), state.line)),
-			(None, _) => return Err((format!("expected int literal, string literal, or identifier in expression, but got nothing"), state.line))
+			(None, _) => return Err((String::from("expected int literal, string literal, or identifier in expression, but got nothing"), state.line))
 		})
 	}
 
@@ -122,26 +120,42 @@ fn eval_expression(state: &mut State, expr: &Vec<TokenType>, expected_type: &str
 
 	let root_value = eval_token(state, &mut iter, expected_type)?;
 
-	/* sometimes the root value will be the accumulator, so we have to do this check to make sure we dont mov rax to rax */
-	if (root_value != accumulator) {
-		state.textsect.push_str(&format!("\tmov {accumulator}, {root_value}\n"));
-	}
-
+	let mut iteration_ran = false;
 	while let Some(i) = iter.next() {
+		if (!iteration_ran) {
+			/* sometimes the root value will be the accumulator, so we have to do this check to make sure we dont mov rax to rax */
+			if (root_value != accumulator) {
+				state.textsect.push_str(&format!("\tmov {accumulator}, {root_value}\n"));
+			}
+		}
+
+		iteration_ran = true;
+
+		let val = eval_token(state, &mut iter, expected_type)?;
 		match i {
-			TokenType::Operator('+') => {
-				let val = eval_token(state, &mut iter, expected_type)?;
+			Operator('+') => {
 				state.textsect.push_str(&format!("\tadd {accumulator}, {val}\n"));
 			},
-			TokenType::Operator('-') => {
-				let val = eval_token(state, &mut iter, expected_type)?;
+			Operator('-') => {
 				state.textsect.push_str(&format!("\tsub {accumulator}, {val}\n"));
 			}
-			x => todo!("{}", x)
+			Operator('*') => {
+				state.textsect.push_str(&format!("\timul {accumulator}, {val}\n"));
+			}
+			Operator('/') => {
+				todo!("[line {}] division is not supported yet", state.line);
+			}
+
+			err => return Err((format!("unexpected {err} in expression evaluation"), state.line))
 		}
 	}
 
-	Ok(accumulator.to_owned())
+	if (!iteration_ran) {
+		Ok(root_value)
+	}
+	else {
+		Ok(accumulator.to_owned())
+	}
 }
 
 /* adds a variable to the local_variables hashmap */
@@ -164,7 +178,7 @@ fn add_variable(state: &mut State, name: &str, vartype: &str, initval: Option<&s
 }
 
 fn call_function(state: &mut State, name: &str, args: &Vec<Expression>) -> Result<(), (String, i64)> {
-	let function = match state.functions.get(name) {
+	let function = match state.functions.get(name).cloned() {
 		Some(x) => x,
 		None => return Err((format!("undefined function '{name}'"), state.line))
 	};
@@ -181,45 +195,12 @@ fn call_function(state: &mut State, name: &str, args: &Vec<Expression>) -> Resul
 
 	/* insert arguments to their respective registers */
 	for (i, v) in args.iter().enumerate() {
-		match (v) {
-			Numerical(x) => {
-				let (word, _) = get_size_of_type(&function.arg_types[i], state.line)?;
-				let register = get_register(i, &word, state.line)?;
+		let expr_evaluation = eval_expression(state, v, &function.arg_types[i])?;
 
-				state.textsect.push_str(&format!("\tmov {register}, {x}\n"));
-			},
-			StringLiteral(x) => {
-				let register = get_register(i, &QuadWord, state.line)?;
-				let identifier = resolve_string_literal(&mut state.datasect, x);
+		let (word, _) = get_size_of_type(&function.arg_types[i], state.line)?;
+		let register = get_register(i, &word, state.line)?;
 
-				state.textsect.push_str(&format!("\tmov {register}, {identifier}\n"));
-			},
-			Variable(varname) => { 
-				match state.current_function.local_variables.get(varname) {
-					Some(var) => {
-						if (function.arg_types[i] != var.vartype) {
-							return Err((format!("function '{name}' accepts type {} as paramater {} but the type of '{varname}' is {}", function.arg_types[i], i + 1, var.vartype), state.line))
-						}
-
-						let (word, _) = get_size_of_type(&var.vartype, state.line)?;
-						let register = get_register(i, &word, state.line)?;
-
-						match (word) {
-							DoubleWord | QuadWord => {
-								state.textsect.push_str(&format!("\tmov {register}, {word} {}\n", var.addr))
-							},
-							_ => {
-								let register32 = get_register(i, &DoubleWord, state.line)?;
-								state.textsect.push_str(&format!("\tmovsx {register32}, {word} {}\n", var.addr));
-							}
-						}
-					},
-					None => return Err((format!("variable '{varname}' is not defined in the current scope"), state.line))
-				}
-			},
-
-			err => return Err((format!("expected either an int literal, string literal or identifier in call to function '{name}', but got {err}"), state.line))
-		};
+		state.textsect.push_str(&format!("\tmov {register}, {expr_evaluation}\n"));
 	}
 	
 	state.textsect.push_str(&format!("\tcall {name}\n"));
@@ -333,7 +314,7 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 			/*           macros           */
 			/* -------------------------- */
 			MacroCall("asm!", args) => {
-				let instruction = match &args[0] {
+				let instruction = match &args[0][0] {
 					StringLiteral(ref x) => x,
 					err => return Err((format!("expected token type to be a string literal, not {err}"), state.line))
 				};
@@ -342,10 +323,10 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 			},
 			MacroCall("syscall!", args) => {
 				for (i, v) in args.iter().enumerate() {
-					let v = match (v) {
-						Numerical(x) => x.to_owned(),
+					let v = match &(v[0]) {
+						IntLiteral(x) => x.to_owned(),
 						StringLiteral(x) => resolve_string_literal(&mut state.datasect, x),
-						Variable(varname) => { 
+						Identifier(varname) => { 
 							match state.current_function.local_variables.get(varname) {
 								Some(var) => {
 									if (var.vartype != "i64") {

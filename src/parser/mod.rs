@@ -1,9 +1,6 @@
 use crate::lexer::TokenType::{self, *};
 
-pub mod expressions;
-use expressions::Expression;
-
-type NewExpression = Vec<TokenType>;
+pub type Expression = Vec<TokenType>;
 
 #[derive(Debug)]
 pub enum AstType<'a> {
@@ -12,9 +9,9 @@ pub enum AstType<'a> {
 	/* function name, vector of types that the function accepts, return type */
 	FunctionPrototype(&'a str, Vec<String>, Option<String>),
 	/* expression */
-	ReturnStatement(NewExpression),
+	ReturnStatement(Expression),
 	/* variable name, type, and initializer value */
-	VariableDefinition(&'a str, &'a str, NewExpression),
+	VariableDefinition(&'a str, &'a str, Expression),
 	/* macro name, arguments */
 	MacroCall(&'a str, Vec<Expression>),
 	/* function name, arguments */
@@ -25,10 +22,10 @@ pub enum AstType<'a> {
 	Newline
 }
 
-fn seperate_expression(iter: &mut core::slice::Iter<TokenType>) -> Vec<TokenType> {
-	let mut expression: Vec<TokenType> = Vec::new();
+fn seperate_expression(iter: &mut core::slice::Iter<TokenType>) -> Expression {
+	let mut expression: Expression = Vec::new();
 
-	while let Some(i) = iter.next() {
+	for i in iter.by_ref() {
 		if let Operator(';') = i {
 			break;
 		}
@@ -42,17 +39,29 @@ pub fn process_function_parmaters(iter: &mut core::slice::Iter<TokenType>, line:
 	let mut arguments: Vec<Expression> = Vec::new();
 
 	/* iterate over tokens and push the arguments to 'arguments' vector */
-	while let Some(i) = iter.next() {
-		match (i) {						
-			StringLiteral(_) | IntLiteral(_) | Identifier(_) => arguments.push(expressions::determine_expression(i, iter, line)?),
-			
-			Operator(',') | Newline => (),
-
-			Operator(';') => break,
-			Operator(')') => break,
-
-			err => return Err((format!("unexpected {err} in call to function/macro"), line))
+	'outer: while let Some(v) = iter.next() {
+		if let Operator(')') = v {
+			break;
 		}
+
+		let mut expr = Vec::new();
+		expr.push(v.clone());
+
+		for v in iter.by_ref() {
+			match (v) {
+				Operator(',') => break,
+				Operator(')') => {
+					arguments.push(expr);
+					break 'outer;
+				},
+				Newline => (),
+
+				_ => expr.push(v.clone()),
+
+			}
+		}
+		
+		arguments.push(expr);
 	}
 
 	Ok(arguments)
