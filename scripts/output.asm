@@ -1,6 +1,6 @@
 section .data
-	L0: db `%hd\n`, 0
-	L1: db `%hd\n`, 0
+	L0: db `%d\n`, 0
+	L1: db `%d\n`, 0
 section .text
 
 extern puts
@@ -46,26 +46,69 @@ abc:
 	pop rbp
 	ret
 
+global div
+div:
+	push rbp
+	mov rbp, rsp
+
+	mov dword [rbp-4], edi
+	mov dword [rbp-8], esi
+	mov eax, edi
+	idiv esi
+	pop rbp
+	ret
+
+global sqr
+sqr:
+	push rbp
+	mov rbp, rsp
+
+	mov dword [rbp-4], edi
+	mov r11d, [rbp-4]
+	imul r11d, [rbp-4]
+	mov eax, r11d
+	pop rbp
+	ret
+
 global main
 main:
 	push rbp
 	mov rbp, rsp
-	sub rsp, 2
+	sub rsp, 8
 
-	mov word [rbp-2], 50
+	mov edi, 50
+	call sqr
+	mov r11d, eax
+	mov edi, 50
+	call sqr
+	add r11d, eax
+	xor rdx, rdx
+	mov eax, r11d
+	mov ebx, 2
+	idiv ebx
+	mov r11d, eax
+	mov dword [rbp-4], r11d
 
 	call abc
 
 	xor rax, rax
 	mov rdi, L0
-	mov si, [rbp-2]
+	mov esi, [rbp-4]
 	call printf
+
+	mov edi, 200
+	mov esi, 2
+	call div
+	mov r11d, eax
+	mov edi, 200
+	mov esi, 2
+	call div
+	add r11d, eax
+	mov dword [rbp-8], r11d
 
 	xor rax, rax
 	mov rdi, L1
-	mov r11w, [rbp-2]
-	add r11w, 1
-	mov si, r11w
+	mov esi, [rbp-8]
 	call printf
 
 	mov eax, 0

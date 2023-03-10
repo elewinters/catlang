@@ -7,6 +7,14 @@ use crate::lexer::TokenType::{self, *};
 
 use crate::parser::{process_function_parmaters, Expression};
 
+macro_rules! warn {
+	($fmt:expr, $line:expr) => {
+		{
+			println!("[line {}] {}", $line, String::from("catlang: \x1b[33mwarning:\x1b[0m ") + &$fmt);
+		}
+	}
+}
+
 use registers::*;
 #[derive(Clone)]
 struct Function<'a> {
@@ -152,7 +160,13 @@ fn eval_expression(state: &mut State, expr: &Expression, expected_type: &str) ->
 				state.textsect.push_str(&format!("\timul {accumulator}, {val}\n"));
 			}
 			Operator('/') => {
-				todo!("[line {}] division is not supported yet", state.line);
+				warn!("divison is an unstable feature", state.line);
+				state.textsect.push_str(&format!("\txor rdx, rdx\n"));
+
+				state.textsect.push_str(&format!("\tmov eax, {accumulator}\n"));
+				state.textsect.push_str(&format!("\tmov ebx, {val}\n"));
+				state.textsect.push_str(&format!("\tidiv ebx\n"));
+				state.textsect.push_str(&format!("\tmov {accumulator}, eax\n"));
 			}
 
 			err => return Err((format!("unexpected {err} in expression evaluation"), state.line))

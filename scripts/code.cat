@@ -1,5 +1,5 @@
 fn puts(a: i64);
-fn printf(fmt: i64, n: i16);
+fn printf(fmt: i64, n: i32);
 fn putchar(c: i8);
 
 fn myputchar(c: i8, c2: i8) {
@@ -15,15 +15,26 @@ fn abc() {
 	putchar(10); /* newline */
 }
 
+fn div(x: i32, y: i32) -> i32 {
+	asm!("mov eax, edi");
+	asm!("idiv esi");
+}
+
+fn sqr(x: i32) -> i32 {
+	return x * x;
+}
+
 fn main() -> i32 {
-	let bits16: i16 = 50;
+	let square: i32 = sqr(50) + sqr(50) / 2;
 	abc();
 
 	asm!("xor rax, rax");
-	printf("%hd\n", bits16);
+	printf("%d\n", square);
+
+	let dived: i32 = div(div(200, 2), 2) + div(200, 2);
 
 	asm!("xor rax, rax");
-	printf("%hd\n", bits16 + 1);
+	printf("%d\n", dived);
 
 	return 0;
 }
