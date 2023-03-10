@@ -1,68 +1,29 @@
 fn puts(a: i64);
-fn printf(fmt: i64, n: i64);
+fn printf(fmt: i64, n: i16);
+fn putchar(c: i8);
 
-fn strlen(p: i64) -> i64;
-fn strcpy(dest: i64, src: i64);
-
-fn malloc(size: i64) -> i64;
-fn free(mem: i64);
-
-fn exit(code: i32);
-fn system(ptr: i64);
-
-fn scanf(fmt: i64, buf: i64);
-
-fn number() -> i64 {
-	puts("gonna return a number :D");
-
-	return 5 + 5;
+fn myputchar(c: i8, c2: i8) {
+	putchar(c);
+	putchar(c2);
+	putchar(10);
 }
 
-fn hello_str() -> i64 {
-	let str: i64 = malloc(15);
-	strcpy(str, "Hello, world!");
-
-	return str;
+fn abc() {
+	putchar(65);
+	putchar(66);
+	putchar(67);
+	putchar(10); /* newline */
 }
 
-fn mystrlen(ptr: i64) -> i64 {
-	return strlen(ptr);
-}
-
-fn void(num: i32) {
-	puts("void...");
-}
-
-fn sum(x: i64, y: i64) -> i64 {
-	return x + y;
-}
-
-fn square(x: i32) -> i32 {
-	return x * x;
-}
-
-fn main() {
-	void(1+1);
-	let num: i64 = 50 + "ah" + 20 * 2;
+fn main() -> i32 {
+	let bits16: i16 = 50;
+	abc();
 
 	asm!("xor rax, rax");
-	printf("%ld\n", num);
+	printf("%hd\n", bits16);
 
-	let len: i64 = mystrlen("test" + 1) + mystrlen("hi");
-	
 	asm!("xor rax, rax");
-	printf("lenght of 'test': %ld\n", len);
+	printf("%hd\n", bits16 + 1);
 
-	let str: i64 = hello_str();
-	puts(str);
-	free(str);
-
-	syscall!(1, 1, "does the syscall still work?\n", 29);
-
-	let inputbuf: i64 = malloc(128 + 5);
-	scanf("%s", inputbuf);
-
-	puts(inputbuf);	
-
-	exit(0);
+	return 0;
 }

@@ -22,6 +22,9 @@ pub enum AstType<'a> {
 	Newline
 }
 
+/* all this function does is start from the iterator provided and keep adding every token it sees to a vector until it hits ; */
+/* and then it returns that vector */
+/* things like return statements and variable declerations use this */
 fn seperate_expression(iter: &mut core::slice::Iter<TokenType>) -> Expression {
 	let mut expression: Expression = Vec::new();
 
@@ -35,7 +38,7 @@ fn seperate_expression(iter: &mut core::slice::Iter<TokenType>) -> Expression {
 	expression
 }
 
-pub fn process_function_parmaters(iter: &mut core::slice::Iter<TokenType>, line: i64) -> Result<Vec<Expression>, (String, i64)> {
+pub fn process_function_parmaters(iter: &mut core::slice::Iter<TokenType>, _line: i64) -> Result<Vec<Expression>, (String, i64)> {
 	let mut arguments: Vec<Expression> = Vec::new();
 
 	/* iterate over tokens and push the arguments to 'arguments' vector */

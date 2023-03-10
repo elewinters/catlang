@@ -1,104 +1,48 @@
 section .data
-	L0: db `gonna return a number :D`, 0
-	L1: db `Hello, world!`, 0
-	L2: db `void...`, 0
-	L3: db `ah`, 0
-	L4: db `%ld\n`, 0
-	L5: db `test`, 0
-	L6: db `hi`, 0
-	L7: db `lenght of 'test': %ld\n`, 0
-	L8: db `does the syscall still work?\n`, 0
-	L9: db `%s`, 0
+	L0: db `%hd\n`, 0
+	L1: db `%hd\n`, 0
 section .text
 
 extern puts
 extern printf
-extern strlen
-extern strcpy
-extern malloc
-extern free
-extern exit
-extern system
-extern scanf
-global number
-number:
+extern putchar
+global myputchar
+myputchar:
 	push rbp
 	mov rbp, rsp
+	sub rsp, 2
 
-	mov rdi, L0
-	call puts
+	mov byte [rbp-1], dil
+	mov byte [rbp-2], sil
+	mov dil, [rbp-1]
+	call putchar
 
-	mov r11, 5
-	add r11, 5
-	mov rax, qword r11
-	pop rbp
-	ret
+	mov dil, [rbp-2]
+	call putchar
 
-global hello_str
-hello_str:
-	push rbp
-	mov rbp, rsp
-	sub rsp, 8
-
-	mov rdi, 15
-	call malloc
-	mov qword [rbp-8], rax
-
-	mov rdi, [rbp-8]
-	mov rsi, L1
-	call strcpy
-
-	mov rax, qword [rbp-8]
-	leave
-	ret
-
-global mystrlen
-mystrlen:
-	push rbp
-	mov rbp, rsp
-	sub rsp, 8
-
-	mov qword [rbp-8], rdi
-	mov rdi, [rbp-8]
-	call strlen
-	leave
-	ret
-
-global void
-void:
-	push rbp
-	mov rbp, rsp
-	sub rsp, 4
-
-	mov dword [rbp-4], edi
-	mov rdi, L2
-	call puts
+	mov dil, 10
+	call putchar
 
 	leave
 	ret
 
-global sum
-sum:
+global abc
+abc:
 	push rbp
 	mov rbp, rsp
 
-	mov qword [rbp-8], rdi
-	mov qword [rbp-16], rsi
-	mov r11, [rbp-8]
-	add r11, [rbp-16]
-	mov rax, qword r11
-	pop rbp
-	ret
+	mov dil, 65
+	call putchar
 
-global square
-square:
-	push rbp
-	mov rbp, rsp
+	mov dil, 66
+	call putchar
 
-	mov dword [rbp-4], edi
-	mov r11d, [rbp-4]
-	imul r11d, [rbp-4]
-	mov eax, dword r11d
+	mov dil, 67
+	call putchar
+
+	mov dil, 10
+	call putchar
+
 	pop rbp
 	ret
 
@@ -106,68 +50,25 @@ global main
 main:
 	push rbp
 	mov rbp, rsp
-	sub rsp, 32
+	sub rsp, 2
 
-	mov edi, 1+1
-	call void
+	mov word [rbp-2], 50
 
-	mov r11, 50
-	add r11, L3
-	add r11, 20
-	imul r11, 2
-	mov qword [rbp-8], r11
+	call abc
 
 	xor rax, rax
-	mov rdi, L4
-	mov rsi, [rbp-8]
+	mov rdi, L0
+	mov si, [rbp-2]
 	call printf
-
-	mov r11, L5
-	add r11, 1
-	mov rdi, r11
-	call mystrlen
-	mov r11, rax
-	mov rdi, L6
-	call mystrlen
-	add r11, rax
-	mov qword [rbp-16], r11
 
 	xor rax, rax
-	mov rdi, L7
-	mov rsi, [rbp-16]
+	mov rdi, L1
+	mov r11w, [rbp-2]
+	add r11w, 1
+	mov si, r11w
 	call printf
 
-	call hello_str
-	mov qword [rbp-24], rax
-
-	mov rdi, [rbp-24]
-	call puts
-
-	mov rdi, [rbp-24]
-	call free
-
-	mov rax, 1
-	mov rdi, 1
-	mov rsi, L8
-	mov rdx, 29
-	syscall
-
-	mov r11, 128
-	add r11, 5
-	mov rdi, r11
-	call malloc
-	mov qword [rbp-32], rax
-
-	mov rdi, L9
-	mov rsi, [rbp-32]
-	call scanf
-
-	mov rdi, [rbp-32]
-	call puts
-
-	mov edi, 0
-	call exit
-
+	mov eax, 0
 	leave
 	ret
 

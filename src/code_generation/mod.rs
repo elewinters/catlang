@@ -61,11 +61,19 @@ fn resolve_string_literal(datasect: &mut String, literal: &str) -> String {
 	}
 }
 
-fn eval_expression(state: &mut State, expr: &[TokenType], expected_type: &str) -> Result<String, (String, i64)> {
+/* evaluates an expression (aka a list of tokens) and returns the result where its stored at (or just its literal value if no operations were done on it) */
+/* an example input of [5, +, 5, +, strlen, (, "12345", )] with expected_type as i32 would give you the result 'r11d', which is where the result of this expression is stored at (the result is 15 by the way) */
+/* another example input of ["hello world"] would return the identifier for this string literal, so something like L0 or L1 */
+/* another example input of [5] would return 5 */
+fn eval_expression(state: &mut State, expr: &Expression, expected_type: &str) -> Result<String, (String, i64)> {
 	let mut iter = expr.iter();
 
-	/* evaluates a token and returns its value */
-	fn eval_token(state: &mut State, iter: &mut core::slice::Iter<TokenType>, expected_type: &str) -> Result<String, (String, i64)> {
+	/* what this function does is it evaluates a single element of an expression, a sort of "miniexpression" */
+	/* so if you feed it '5' it will return '5' */
+	/* if you feed it the string literal "hello" it will return L0, L1, etc */
+	/* if you feed it 'strlen, (, "hi", )' it will return rax/eax */
+	/* if you feed it 'var' it will return its address on the stack (like [rbp-16]) */
+	fn eval_miniexpression(state: &mut State, iter: &mut core::slice::Iter<TokenType>, expected_type: &str) -> Result<String, (String, i64)> {
 		Ok(match (iter.next(), iter.clone().peekable().peek()) {
 			(Some(IntLiteral(x)), _) => x.to_string(),
 			(Some(StringLiteral(x)), _) => resolve_string_literal(&mut state.datasect, x),
@@ -118,20 +126,21 @@ fn eval_expression(state: &mut State, expr: &[TokenType], expected_type: &str) -
 	let (word, _) = get_size_of_type(expected_type, state.line)?;
 	let accumulator = get_accumulator2(&word);
 
-	let root_value = eval_token(state, &mut iter, expected_type)?;
+	let root_value = eval_miniexpression(state, &mut iter, expected_type)?;
+	
+	/* if the expression only has one element we just return its root */
+	if (iter.clone().peekable().peek().is_none()) {
+		return Ok(root_value);
+	}
 
-	let mut iteration_ran = false;
+	/* if it has multiple elements we move it to the accumulator (unless its already there) */
+	if (root_value != accumulator) {
+		state.textsect.push_str(&format!("\tmov {accumulator}, {root_value}\n"));
+	}
+	
+	/* now we do all sorts of operations on the accumulator */
 	while let Some(i) = iter.next() {
-		if (!iteration_ran) {
-			/* sometimes the root value will be the accumulator, so we have to do this check to make sure we dont mov rax to rax */
-			if (root_value != accumulator) {
-				state.textsect.push_str(&format!("\tmov {accumulator}, {root_value}\n"));
-			}
-		}
-
-		iteration_ran = true;
-
-		let val = eval_token(state, &mut iter, expected_type)?;
+		let val = eval_miniexpression(state, &mut iter, expected_type)?;
 		match i {
 			Operator('+') => {
 				state.textsect.push_str(&format!("\tadd {accumulator}, {val}\n"));
@@ -150,17 +159,13 @@ fn eval_expression(state: &mut State, expr: &[TokenType], expected_type: &str) -
 		}
 	}
 
-	if (!iteration_ran) {
-		Ok(root_value)
-	}
-	else {
-		Ok(accumulator.to_owned())
-	}
+	/* once we're done we return it */
+	Ok(accumulator.to_owned())
 }
 
 /* adds a variable to the local_variables hashmap */
 fn add_variable(state: &mut State, name: &str, vartype: &str, initval: Option<&str>) -> Result<(), (String, i64)> {
-	/* we dont make the 2nd value '_' for once! */
+	/* we dont make the 2nd value of this tuple '_' for once! */
 	let (word, bytesize) = get_size_of_type(vartype, state.line)?;
 	state.current_function.stacksize += bytesize;
 
@@ -200,7 +205,7 @@ fn call_function(state: &mut State, name: &str, args: &Vec<Expression>) -> Resul
 		let (word, _) = get_size_of_type(&function.arg_types[i], state.line)?;
 		let register = get_register(i, &word, state.line)?;
 
-		state.textsect.push_str(&format!("\tmov {register}, {expr_evaluation}\n"));
+		state.textsect.push_str(&format!("\tmov {register}, {expr_evaluation}\n"))
 	}
 	
 	state.textsect.push_str(&format!("\tcall {name}\n"));
@@ -237,9 +242,9 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 				/* add arguments to the stack */
 				for i in 0..args.0.len() {
 					let (word, _) = get_size_of_type(&args.1[i], state.line)?;
-					let register32 = get_register_32_or_64(i, &word, state.line)?;
+					let register = get_register(i, &word, state.line)?;
 
-					add_variable(&mut state, &args.0[i], &args.1[i], Some(register32))?;
+					add_variable(&mut state, &args.0[i], &args.1[i], Some(register))?;
 				}
 				
 				state.functions.insert(name.to_string(), Function { arg_types: &args.1, return_type });
@@ -277,7 +282,7 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 				/* the return_value can sometimes be the accumulator */
 				/* which means that we'll be moving rax to rax, which is just unnecessary */
 				if (accumulator != return_value) {
-					state.textsect.push_str(&format!("\tmov {accumulator}, {word} {return_value}\n"));
+					state.textsect.push_str(&format!("\tmov {accumulator}, {return_value}\n"));
 				}
 			}
 			/* -------------------------- */

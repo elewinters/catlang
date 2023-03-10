@@ -90,35 +90,3 @@ pub fn get_register(argument_count: usize, word: &WordType, line: i64) -> Result
         }
     }
 }
-
-pub fn get_register_32_or_64(argument_count: usize, word: &WordType, line: i64) -> Result<&'static str, (String, i64)> {
-    match (argument_count, word) {
-        /* edi/rdi */
-        (0, Byte) | (0, Word) | (0, DoubleWord) => Ok("edi"),
-        (0, QuadWord) => Ok("rdi"),
-
-        /* esi/rsi */
-        (1, Byte) | (1, Word) | (1, DoubleWord) => Ok("esi"),
-        (1, QuadWord) => Ok("rsi"),
-
-        /* edx/rdx */
-        (2, Byte) | (2, Word) | (2, DoubleWord) => Ok("edx"),
-        (2, QuadWord) => Ok("rdx"),
-
-        /* ecx/rcx */
-        (3, Byte) | (3, Word) | (3, DoubleWord) => Ok("ecx"),
-        (3, QuadWord) => Ok("rcx"),
-        
-        /* r8 */
-        (4, Byte) | (4, Word) |(4, DoubleWord) => Ok("r8d"),
-        (4, QuadWord) => Ok("r8"),
-
-        /* r9 */
-        (5, Byte) | (5, Word) | (5, DoubleWord) => Ok("r9d"),
-        (5, QuadWord) => Ok("r9"),
-
-        (_, _) => {
-            Err((String::from("too many arguments to function, functions can only up to 6 arguments at the moment"), line))
-        }
-    }
-}
