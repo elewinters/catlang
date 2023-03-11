@@ -21,10 +21,12 @@ macro_rules! exit {
 	TODO:
 		rewrite the lexer
 		add a nicer way to print the AST
-		make expressions more versatile
 
 		NOW:
-			replace String with enums for all of the datatypes and word types
+			create a DataType struct with fields for wordtype and bytesize, so we dont constantly have to call get_size_of_type
+
+			fix nested function calls not fully working as expected
+			make division more versatile
 
 			add control flow (if & match)
 			add arrays
