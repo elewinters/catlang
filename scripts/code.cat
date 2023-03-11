@@ -37,7 +37,7 @@ fn main() -> i32 {
 	printf("%d\n", square);
 
 	/* result will be 6! */
-	let dived: i32 = sum(2, sqr(2));
+	let dived: i32 = sum(2, sqr(sum(strlen("hi"), 1)));
 
 	asm!("xor rax, rax");
 	printf("%d\n", dived);

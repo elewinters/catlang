@@ -1,6 +1,7 @@
 section .data
 	L0: db `%d\n`, 0
-	L1: db `%d\n`, 0
+	L1: db `hi`, 0
+	L2: db `%d\n`, 0
 section .text
 
 extern puts
@@ -110,15 +111,23 @@ main:
 	mov esi, [rbp-4]
 	call printf
 
-	mov edi, 2
+	mov edi, 1
+	mov esi, 1
+	call sum
+	mov rdi, L1
+	call strlen
+	mov edi, eax
+	mov esi, 1
+	call sum
+	mov edi, eax
 	call sqr
-	mov edi, 2
+	mov edi, eax
 	mov esi, eax
 	call sum
 	mov dword [rbp-8], eax
 
 	xor rax, rax
-	mov rdi, L1
+	mov rdi, L2
 	mov esi, [rbp-8]
 	call printf
 

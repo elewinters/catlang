@@ -104,8 +104,6 @@ fn eval_expression(state: &mut State, expr: &Expression, expected_type: &str) ->
 				if (return_type != expected_type) {
 					return Err((format!("expected expression to evaluate to '{expected_type}', but the return type of '{function_name}' is '{return_type}'"), state.line));
 				}
-
-				warn!("nested function calls are experimental", state.line);
 	
 				let (word, _) = get_size_of_type(return_type, state.line)?;
 				get_accumulator(&word).to_owned()
