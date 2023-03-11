@@ -25,14 +25,14 @@ pub enum AstType<'a> {
 /* all this function does is start from the iterator provided and keep adding every token it sees to a vector until it hits ; */
 /* and then it returns that vector */
 /* things like return statements and variable declerations use this */
-fn seperate_expression(iter: &mut core::slice::Iter<TokenType>) -> Expression {
+fn seperate_expression(iter: &mut core::slice::Iter<TokenType>, terminator: char) -> Expression {
 	let mut expression: Expression = Vec::new();
 
 	for i in iter.by_ref() {
-		if let Operator(';') = i {
-			break;
+		match i {
+			Operator(x) if *x == terminator => break,
+			_ => expression.push(i.clone())
 		}
-		expression.push(i.clone());
 	}
 
 	expression
@@ -196,7 +196,7 @@ pub fn parse(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 			/*    function returning    */
 			/* ------------------------ */
 			Keyword(keyword) if keyword == "return" => {
-				let return_expr = seperate_expression(&mut iter);
+				let return_expr = seperate_expression(&mut iter, ';');
 
 				/* push everything to the AST */
 				ast.push(AstType::ReturnStatement(return_expr));
@@ -230,7 +230,7 @@ pub fn parse(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 				};
 
 				/* get initializer value */
-				let initexpr = seperate_expression(&mut iter);
+				let initexpr = seperate_expression(&mut iter, ';');
 
 				/* push everything to the AST */
 				ast.push(AstType::VariableDefinition(variable_name, variable_type, initexpr));

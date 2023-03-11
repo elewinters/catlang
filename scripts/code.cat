@@ -29,7 +29,7 @@ fn sqr(x: i32) -> i32 {
 }
 
 fn main() -> i32 {
-	let x: i32 = sqr(4) / 2;
+	let x: i32 = sqr(4) / sqr(4);
 
 	asm!("xor rax, rax");
 	printf("%d\n", x);

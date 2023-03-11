@@ -23,6 +23,7 @@ macro_rules! exit {
 		add a nicer way to print the AST
 
 		NOW:
+			seriously you really need to rewrite the lexer, Now
 			create a DataType struct with fields for wordtype and bytesize, so we dont constantly have to call get_size_of_type
 
 			fix nested function calls not fully working as expected
