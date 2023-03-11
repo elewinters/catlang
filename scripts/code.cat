@@ -3,9 +3,8 @@ fn printf(fmt: i64, n: i32);
 fn putchar(c: i8);
 fn strlen(ptr: i64) -> i32;
 
-fn myputchar(c: i8, c2: i8) {
+fn myputchar(c: i8) {
 	putchar(c);
-	putchar(c2);
 	putchar(10);
 }
 
@@ -30,17 +29,10 @@ fn sqr(x: i32) -> i32 {
 }
 
 fn main() -> i32 {
-	let square: i32 = sqr(50) + sqr(50) / 2;
-	abc();
+	let x: i32 = sqr(4) / 2;
 
 	asm!("xor rax, rax");
-	printf("%d\n", square);
-
-	/* result will be 6! */
-	let dived: i32 = sum(2, sqr(sum(strlen("hi"), 1)));
-
-	asm!("xor rax, rax");
-	printf("%d\n", dived);
+	printf("%d\n", x);
 
 	return 0;
 }

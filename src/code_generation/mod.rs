@@ -132,7 +132,7 @@ fn eval_expression(state: &mut State, expr: &Expression, expected_type: &str) ->
 	}
 
 	let (word, _) = get_size_of_type(expected_type, state.line)?;
-	let accumulator = get_accumulator2(&word);
+	let root_register = get_accumulator2(&word);
 
 	let root_value = eval_miniexpression(state, &mut iter, expected_type)?;
 	
@@ -142,8 +142,8 @@ fn eval_expression(state: &mut State, expr: &Expression, expected_type: &str) ->
 	}
 
 	/* if it has multiple elements we move it to the accumulator (unless its already there) */
-	if (root_value != accumulator) {
-		state.textsect.push_str(&format!("\tmov {accumulator}, {root_value}\n"));
+	if (root_value != root_register) {
+		state.textsect.push_str(&format!("\tmov {root_register}, {root_value}\n"));
 	}
 	
 	/* now we do all sorts of operations on the accumulator */
@@ -151,22 +151,33 @@ fn eval_expression(state: &mut State, expr: &Expression, expected_type: &str) ->
 		let val = eval_miniexpression(state, &mut iter, expected_type)?;
 		match i {
 			Operator('+') => {
-				state.textsect.push_str(&format!("\tadd {accumulator}, {val}\n"));
+				state.textsect.push_str(&format!("\tadd {root_register}, {val}\n"));
 			},
 			Operator('-') => {
-				state.textsect.push_str(&format!("\tsub {accumulator}, {val}\n"));
+				state.textsect.push_str(&format!("\tsub {root_register}, {val}\n"));
 			}
 			Operator('*') => {
-				state.textsect.push_str(&format!("\timul {accumulator}, {val}\n"));
+				state.textsect.push_str(&format!("\timul {root_register}, {val}\n"));
 			}
 			Operator('/') => {
 				warn!("divison is an unstable feature", state.line);
-				state.textsect.push_str("\txor rdx, rdx\n");
 
-				state.textsect.push_str(&format!("\tmov eax, {accumulator}\n"));
-				state.textsect.push_str(&format!("\tmov ebx, {val}\n"));
-				state.textsect.push_str("\tidiv ebx\n");
-				state.textsect.push_str(&format!("\tmov {accumulator}, eax\n"));
+				let accumulator = get_accumulator(&word);
+				let accumulator3 = get_accumulator3(&word);
+
+				/* this is where we have to place the first value of division operation (accumulator) */
+				state.textsect.push_str("\txor rax, rax\n");
+				/* and this is where our divisor goes (accumulator3) */
+				state.textsect.push_str("\txor rbx, rbx\n");
+				/* clear out rdx before division (if we dont do this we will Crash the Fucking Program) */
+				state.textsect.push_str("\tcdq\n");
+				
+
+				state.textsect.push_str(&format!("\tmov {accumulator}, {word} {root_register}\n"));
+				state.textsect.push_str(&format!("\tmov {accumulator3}, {val}\n"));
+				state.textsect.push_str(&format!("\tidiv {accumulator3}\n"));
+
+				state.textsect.push_str(&format!("\tmov {root_register}, {accumulator}\n"));
 			}
 
 			err => return Err((format!("unexpected {err} in expression evaluation"), state.line))
@@ -174,7 +185,7 @@ fn eval_expression(state: &mut State, expr: &Expression, expected_type: &str) ->
 	}
 
 	/* once we're done we return it */
-	Ok(accumulator.to_owned())
+	Ok(root_register.to_owned())
 }
 
 /* adds a variable to the local_variables hashmap */

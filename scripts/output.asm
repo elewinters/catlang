@@ -1,7 +1,5 @@
 section .data
 	L0: db `%d\n`, 0
-	L1: db `hi`, 0
-	L2: db `%d\n`, 0
 section .text
 
 extern puts
@@ -12,14 +10,10 @@ global myputchar
 myputchar:
 	push rbp
 	mov rbp, rsp
-	sub rsp, 2
+	sub rsp, 1
 
 	mov byte [rbp-1], dil
-	mov byte [rbp-2], sil
 	mov dil, [rbp-1]
-	call putchar
-
-	mov dil, [rbp-2]
 	call putchar
 
 	mov dil, 10
@@ -89,46 +83,21 @@ global main
 main:
 	push rbp
 	mov rbp, rsp
-	sub rsp, 8
+	sub rsp, 4
 
-	mov edi, 50
-	call sqr
-	mov r11d, eax
-	mov edi, 50
-	call sqr
-	add r11d, eax
+	mov r11d, 5
+	xor rax, rax
+	xor rbx, rbx
 	xor rdx, rdx
-	mov eax, r11d
+	mov eax, dword r11d
 	mov ebx, 2
 	idiv ebx
 	mov r11d, eax
 	mov dword [rbp-4], r11d
 
-	call abc
-
 	xor rax, rax
 	mov rdi, L0
 	mov esi, [rbp-4]
-	call printf
-
-	mov edi, 1
-	mov esi, 1
-	call sum
-	mov rdi, L1
-	call strlen
-	mov edi, eax
-	mov esi, 1
-	call sum
-	mov edi, eax
-	call sqr
-	mov edi, eax
-	mov esi, eax
-	call sum
-	mov dword [rbp-8], eax
-
-	xor rax, rax
-	mov rdi, L2
-	mov esi, [rbp-8]
 	call printf
 
 	mov eax, 0
