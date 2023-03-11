@@ -5,7 +5,7 @@ mod registers;
 use crate::parser::AstType::{self, *};
 use crate::lexer::TokenType::{self, *};
 
-use crate::parser::{process_function_parmaters, Expression};
+use crate::parser::{process_function_parameters, Expression};
 
 macro_rules! warn {
 	($fmt:expr, $line:expr) => {
@@ -90,7 +90,7 @@ fn eval_expression(state: &mut State, expr: &Expression, expected_type: &str) ->
 			(Some(Identifier(function_name)), Some(Operator('('))) => {
 				iter.next(); /* strip ( */
 
-				let args = process_function_parmaters(iter, state.line)?;
+				let args = process_function_parameters(iter);
 				call_function(state, function_name, &args)?;
 		
 				/* this unwrap will never fail because call_function will have handled it already at this point */

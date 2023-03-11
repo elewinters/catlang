@@ -40,7 +40,7 @@ fn seperate_expression(iter: &mut core::slice::Iter<TokenType>) -> Expression {
 
 /* no idea how this function works i know its extremely messy just dont worry about it */
 /* think of it as a little black box that magically processes your function paramaters */
-pub fn process_function_parmaters(iter: &mut core::slice::Iter<TokenType>, _line: i64) -> Result<Vec<Expression>, (String, i64)> {
+pub fn process_function_parameters(iter: &mut core::slice::Iter<TokenType>) -> Vec<Expression> {
 	let mut arguments: Vec<Expression> = Vec::new();
 	/* for nested function calls */
 	let mut function_levels = 1;
@@ -87,7 +87,7 @@ pub fn process_function_parmaters(iter: &mut core::slice::Iter<TokenType>, _line
 		arguments.push(expr);
 	}
 
-	Ok(arguments)
+	arguments
 }
 
 pub fn parse(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
@@ -252,7 +252,7 @@ pub fn parse(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 					_ => return Err((format!("expected operator '(' after {macro_or_function} '{identifier}'"), line))
 				}
 				
-				let arguments = process_function_parmaters(&mut iter, line)?;
+				let arguments = process_function_parameters(&mut iter);
 
 				if (macro_or_function == "macro") {
 					ast.push(AstType::MacroCall(identifier, arguments));
