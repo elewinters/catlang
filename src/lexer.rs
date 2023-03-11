@@ -47,9 +47,13 @@ const KEYWORDS: [&str; 3] = [
 	"return"
 ];
 
-const ESCAPE_CHARACTERS: [char; 10] = [
+const ESCAPE_CHARACTERS: [char; 14] = [
 	'<', 
 	'>', /* for the arrows in function returns (like -> i32) */
+	'+',
+	'-',
+	'*',
+	'/',
 	'(', 
 	')', 
 	',', 

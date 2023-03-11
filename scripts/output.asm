@@ -58,6 +58,23 @@ div:
 	pop rbp
 	ret
 
+global div_real
+div_real:
+	push rbp
+	mov rbp, rsp
+
+	mov dword [rbp-4], edi
+	mov dword [rbp-8], esi
+	mov r11d, [rbp-4]
+	xor rdx, rdx
+	mov eax, r11d
+	mov ebx, [rbp-8]
+	idiv ebx
+	mov r11d, eax
+	mov eax, r11d
+	pop rbp
+	ret
+
 global sqr
 sqr:
 	push rbp
@@ -98,13 +115,8 @@ main:
 
 	mov edi, 200
 	mov esi, 2
-	call div
-	mov r11d, eax
-	mov edi, 200
-	mov esi, 2
-	call div
-	add r11d, eax
-	mov dword [rbp-8], r11d
+	call div_real
+	mov dword [rbp-8], eax
 
 	xor rax, rax
 	mov rdi, L1

@@ -20,6 +20,10 @@ fn div(x: i32, y: i32) -> i32 {
 	asm!("idiv esi");
 }
 
+fn div_real(x: i32, y: i32) -> i32 {
+	return x / y;
+}
+
 fn sqr(x: i32) -> i32 {
 	return x * x;
 }
@@ -31,7 +35,7 @@ fn main() -> i32 {
 	asm!("xor rax, rax");
 	printf("%d\n", square);
 
-	let dived: i32 = div(div(200, 2), 2) + div(200, 2);
+	let dived: i32 = div_real(200, 2);
 
 	asm!("xor rax, rax");
 	printf("%d\n", dived);
