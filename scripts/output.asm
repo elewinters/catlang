@@ -6,6 +6,7 @@ section .text
 extern puts
 extern printf
 extern putchar
+extern strlen
 global myputchar
 myputchar:
 	push rbp
@@ -58,19 +59,15 @@ div:
 	pop rbp
 	ret
 
-global div_real
-div_real:
+global sum
+sum:
 	push rbp
 	mov rbp, rsp
 
 	mov dword [rbp-4], edi
 	mov dword [rbp-8], esi
 	mov r11d, [rbp-4]
-	xor rdx, rdx
-	mov eax, r11d
-	mov ebx, [rbp-8]
-	idiv ebx
-	mov r11d, eax
+	add r11d, [rbp-8]
 	mov eax, r11d
 	pop rbp
 	ret
@@ -113,9 +110,11 @@ main:
 	mov esi, [rbp-4]
 	call printf
 
-	mov edi, 200
-	mov esi, 2
-	call div_real
+	mov edi, 2
+	call sqr
+	mov edi, 2
+	mov esi, eax
+	call sum
 	mov dword [rbp-8], eax
 
 	xor rax, rax

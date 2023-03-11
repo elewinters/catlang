@@ -1,6 +1,7 @@
 fn puts(a: i64);
 fn printf(fmt: i64, n: i32);
 fn putchar(c: i8);
+fn strlen(ptr: i64) -> i32;
 
 fn myputchar(c: i8, c2: i8) {
 	putchar(c);
@@ -20,8 +21,8 @@ fn div(x: i32, y: i32) -> i32 {
 	asm!("idiv esi");
 }
 
-fn div_real(x: i32, y: i32) -> i32 {
-	return x / y;
+fn sum(x: i32, y: i32) -> i32 {
+	return x + y;
 }
 
 fn sqr(x: i32) -> i32 {
@@ -35,7 +36,8 @@ fn main() -> i32 {
 	asm!("xor rax, rax");
 	printf("%d\n", square);
 
-	let dived: i32 = div_real(200, 2);
+	/* result will be 6! */
+	let dived: i32 = sum(2, sqr(2));
 
 	asm!("xor rax, rax");
 	printf("%d\n", dived);

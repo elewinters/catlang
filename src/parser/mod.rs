@@ -38,8 +38,12 @@ fn seperate_expression(iter: &mut core::slice::Iter<TokenType>) -> Expression {
 	expression
 }
 
+/* no idea how this function works i know its extremely messy just dont worry about it */
+/* think of it as a little black box that magically processes your function paramaters */
 pub fn process_function_parmaters(iter: &mut core::slice::Iter<TokenType>, _line: i64) -> Result<Vec<Expression>, (String, i64)> {
 	let mut arguments: Vec<Expression> = Vec::new();
+	/* for nested function calls */
+	let mut function_levels = 1;
 
 	/* iterate over tokens and push the arguments to 'arguments' vector */
 	'outer: while let Some(v) = iter.next() {
@@ -52,10 +56,26 @@ pub fn process_function_parmaters(iter: &mut core::slice::Iter<TokenType>, _line
 
 		for v in iter.by_ref() {
 			match (v) {
-				Operator(',') => break,
+				Operator(',') => {
+					if (function_levels <= 1) {
+						break;
+					}
+					
+					expr.push(v.clone());
+				},
+				Operator('(') => {
+					function_levels += 1;
+					expr.push(v.clone());
+				}
 				Operator(')') => {
-					arguments.push(expr);
-					break 'outer;
+					function_levels -= 1;
+					
+					if (function_levels == 0) {
+						arguments.push(expr);
+						break 'outer;
+					}
+
+					expr.push(v.clone())
 				},
 				Newline => (),
 

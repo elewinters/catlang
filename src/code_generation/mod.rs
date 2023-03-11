@@ -104,6 +104,8 @@ fn eval_expression(state: &mut State, expr: &Expression, expected_type: &str) ->
 				if (return_type != expected_type) {
 					return Err((format!("expected expression to evaluate to '{expected_type}', but the return type of '{function_name}' is '{return_type}'"), state.line));
 				}
+
+				warn!("nested function calls are experimental", state.line);
 	
 				let (word, _) = get_size_of_type(return_type, state.line)?;
 				get_accumulator(&word).to_owned()
@@ -161,11 +163,11 @@ fn eval_expression(state: &mut State, expr: &Expression, expected_type: &str) ->
 			}
 			Operator('/') => {
 				warn!("divison is an unstable feature", state.line);
-				state.textsect.push_str(&format!("\txor rdx, rdx\n"));
+				state.textsect.push_str("\txor rdx, rdx\n");
 
 				state.textsect.push_str(&format!("\tmov eax, {accumulator}\n"));
 				state.textsect.push_str(&format!("\tmov ebx, {val}\n"));
-				state.textsect.push_str(&format!("\tidiv ebx\n"));
+				state.textsect.push_str("\tidiv ebx\n");
 				state.textsect.push_str(&format!("\tmov {accumulator}, eax\n"));
 			}
 
@@ -202,6 +204,7 @@ fn call_function(state: &mut State, name: &str, args: &Vec<Expression>) -> Resul
 		None => return Err((format!("undefined function '{name}'"), state.line))
 	};
 
+	/* check if the caller provided enough arguments */
 	if (args.len() != function.arg_types.len()) {
 		/* weird looking if statment is here so we dont produce an error message with broken english */
 		return Err((format!("function '{name}' accepts {} arguments but {} {} given", function.arg_types.len(), args.len(), if (args.len() == 1) {
@@ -212,14 +215,27 @@ fn call_function(state: &mut State, name: &str, args: &Vec<Expression>) -> Resul
 		}), state.line))
 	}
 
-	/* insert arguments to their respective registers */
+	/* we set up a queue for passing arguments to our function, after we're done evaluating all of our expressions we */
+	/* insert the 2nd value of the tuple (the expression evaluation) to the first value of the tuple (the register) */
+
+	/* the reason why we have this queue and why we dont just push the expr onto the register in the loop below, is that an expression evaluation can also call other functions */
+	/* like in an expression like this [sum(100, sum(50, 50))] */
+	/* without this queue passing all of the arguments to their registers would get totally messed up */
+	let mut args_queue: Vec<(&'static str, String)> = Vec::new();
+
+	/* insert arguments to the queue */
 	for (i, v) in args.iter().enumerate() {
 		let expr_evaluation = eval_expression(state, v, &function.arg_types[i])?;
 
 		let (word, _) = get_size_of_type(&function.arg_types[i], state.line)?;
 		let register = get_register(i, &word, state.line)?;
 
-		state.textsect.push_str(&format!("\tmov {register}, {expr_evaluation}\n"))
+		args_queue.push((register, expr_evaluation));
+	}
+
+	/* now pass the arguments into their respective registers */
+	for (register, expr_eval) in args_queue {
+		state.textsect.push_str(&format!("\tmov {register}, {expr_eval}\n"));
 	}
 	
 	state.textsect.push_str(&format!("\tcall {name}\n"));
