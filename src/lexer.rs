@@ -73,18 +73,16 @@ pub fn lex(input: Vec<u8>) -> Vec<TokenType> {
 	let mut in_comment = false;
 
 	while let Some(v) = iter.next() {
-		let v = *v as char;
-		
 		/* comment handling */
 		{
-			if (v == '/') {
+			if (*v == b'/') {
 				if let Some(b'*') = iter.peek() {
 					in_comment = true;
 					iter.next();
 				}
 			}
 
-			if (v == '*') {
+			if (*v == b'*') {
 				if let Some(b'/') = iter.peek() {
 					in_comment = false;
 					iter.next();
@@ -98,27 +96,28 @@ pub fn lex(input: Vec<u8>) -> Vec<TokenType> {
 			}
 		}	
 
-		if (v == '\n') {
+		if (*v == b'\n') {
 			tokens.push(TokenType::Newline);
 		}
 		
-		if (v.is_whitespace()) {
+		if (v.is_ascii_whitespace()) {
 			continue;
 		}
 
-		if (v.is_ascii_punctuation() && v != '"' && v != '_') {
-			tokens.push(TokenType::Operator(v));
+		if (v.is_ascii_punctuation() && *v != b'"' && *v != b'_') {
+			tokens.push(TokenType::Operator(*v as char));
+			continue; /* not doing this caused whitespace to mess stuff up sometimes */
 		}
 		
 		let mut identifier = String::new();
 		/* iter.next() below immediately skips, so we have */
 		/* to add this before that happens */
-		identifier.push(v);
+		identifier.push(*v as char);
 		
 		let mut escaped: char = '\0';
 		let mut is_string: bool = false;
 		for (i, c) in iter.by_ref().enumerate() {
-			if (v == '"') {
+			if (*v == b'"') {
 				is_string = true;
 			}
 
@@ -144,13 +143,13 @@ pub fn lex(input: Vec<u8>) -> Vec<TokenType> {
 		if (KEYWORDS.contains(&identifier.as_ref())) {
 			tokens.push(TokenType::Keyword(identifier));
 		}
-		else if (v.is_ascii_alphabetic() || v == '_') {
+		else if (v.is_ascii_alphabetic() || *v == b'_') {
 			tokens.push(TokenType::Identifier(identifier));
 		}
-		else if (v.is_alphanumeric()) {
+		else if (v.is_ascii_alphanumeric()) {
 			tokens.push(TokenType::IntLiteral(identifier));
 		}
-		else if (v == '"') {
+		else if (*v == b'"') {
 			identifier.remove(0);
 			tokens.push(TokenType::StringLiteral(identifier));
 		}
