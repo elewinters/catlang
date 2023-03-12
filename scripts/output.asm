@@ -73,9 +73,8 @@ sqr:
 	mov rbp, rsp
 
 	mov dword [rbp-4], edi
-	mov r11d, [rbp-4]
-	imul r11d, [rbp-4]
-	mov eax, r11d
+	imul edi, edi
+	mov eax, edi
 	pop rbp
 	ret
 
@@ -85,14 +84,17 @@ main:
 	mov rbp, rsp
 	sub rsp, 4
 
-	mov r11d, 5
-	xor rax, rax
-	xor rbx, rbx
-	xor rdx, rdx
-	mov eax, dword r11d
-	mov ebx, 2
-	idiv ebx
+	mov r11d, 1
+	add r11d, 1
+	mov edi, r11d
+	call sqr
 	mov r11d, eax
+	mov edi, 2
+	call sqr
+	add r11d, eax
+	mov edi, 2
+	call sqr
+	add r11d, eax
 	mov dword [rbp-4], r11d
 
 	xor rax, rax
@@ -102,5 +104,8 @@ main:
 
 	mov eax, 0
 	leave
+	ret
+
+	pop rbp
 	ret
 

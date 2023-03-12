@@ -25,14 +25,17 @@ fn sum(x: i32, y: i32) -> i32 {
 }
 
 fn sqr(x: i32) -> i32 {
-	return x * x;
+	asm!("imul edi, edi");
+	asm!("mov eax, edi");
 }
 
 fn main() -> i32 {
-	let x: i32 = sqr(4) / sqr(4);
+	let x: i32 = sqr(sum(1, 1)) + sqr(2) + sqr(2); 
 
 	asm!("xor rax, rax");
 	printf("%d\n", x);
+
+	if (puts("hello") == 5) {
 
 	return 0;
 }

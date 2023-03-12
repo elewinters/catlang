@@ -22,6 +22,16 @@ pub enum AstType<'a> {
 	Newline
 }
 
+pub fn print_ast(ast: &[AstType]) {
+	for i in ast {
+		match (i) {
+			AstType::Newline => println!("Newline"),
+			_ => print!("{:?} ", i)
+		}
+	}
+	println!();
+}
+
 /* all this function does is start from the iterator provided and keep adding every token it sees to a vector until it hits ; */
 /* and then it returns that vector */
 /* things like return statements and variable declerations use this */
@@ -200,6 +210,27 @@ pub fn parse(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 
 				/* push everything to the AST */
 				ast.push(AstType::ReturnStatement(return_expr));
+			}
+			/* ----------------------- */
+			/*      if statements      */
+			/* ----------------------- */
+			Keyword(keyword) if keyword == "if" => {
+				match iter.next() {
+					Some(Operator('(')) => (),
+					_ => return Err((String::from("expected '(' after if keyword"), line))
+				};
+
+				let mut expr = seperate_expression(&mut iter, '{');
+
+				/* the last element of the expression will be ), which we do not want so we get rid of it */
+				match expr.last() {
+					Some(Operator(')')) => expr.pop(),
+
+					Some(x) => return Err((format!("expected ')' before '{{' in if statement, but got {x}"), line)),
+					_ => return Err((String::from("expected ')' before '{{' in if statement"), line))
+				};
+
+				println!("{:?}", expr);
 			}
 			/* --------------------------- */
 			/*    variable declerations    */

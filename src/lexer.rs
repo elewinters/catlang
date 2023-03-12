@@ -27,10 +27,11 @@ impl Display for TokenType {
 	}
 }
 
-const KEYWORDS: [&str; 3] = [
+const KEYWORDS: [&str; 4] = [
 	"let", 
 	"fn",
-	"return"
+	"return",
+	"if"
 ];
 
 const ESCAPE_CHARACTERS: [char; 14] = [

@@ -74,7 +74,7 @@ fn main() {
 		println!("------------------------");
 		println!("  abstract syntax tree  ");
 		println!("------------------------");
-		println!("{:?}", &ast);
+		parser::print_ast(&ast);
 	}
 
 	/* -------------------------------------------- */
