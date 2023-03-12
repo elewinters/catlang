@@ -1,4 +1,3 @@
-#![allow(unused_assignments)]
 use std::fs;
 use std::env;
 
