@@ -35,7 +35,7 @@ fn main() -> i32 {
 	asm!("xor rax, rax");
 	printf("%d\n", x);
 
-	if (puts("hello") == 5) {
+	if (puts("hello") == 0) {
 
 	return 0;
 }

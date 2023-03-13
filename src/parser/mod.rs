@@ -10,6 +10,8 @@ pub enum AstType<'a> {
 	FunctionPrototype(&'a str, Vec<String>, Option<String>),
 	/* expression */
 	ReturnStatement(Expression),
+	/* first expression, operator, second expression */
+	IfStatement(Expression, ComparisonOperator, Expression),
 	/* variable name, type, and initializer value */
 	VariableDefinition(&'a str, &'a str, Expression),
 	/* macro name, arguments */
@@ -20,6 +22,16 @@ pub enum AstType<'a> {
 	ScopeEnd,
 	/* for counting the line number in parser.rs */
 	Newline
+}
+
+#[derive(Debug)]
+pub enum ComparisonOperator {
+	Equal, // == 
+	NotEqual, // !=
+	GreaterThan, // >
+	LessThan, // <
+	GreaterThanEqual, // >=
+	LessThanEqual // <= 
 }
 
 pub fn print_ast(ast: &[AstType]) {
@@ -220,17 +232,78 @@ pub fn parse(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 					_ => return Err((String::from("expected '(' after if keyword"), line))
 				};
 
-				let mut expr = seperate_expression(&mut iter, '{');
+				let mut expr1: Expression = Vec::new();
+				let mut operator: Option<ComparisonOperator> = None;
+
+				while let Some(x) = iter.next() {
+					match x {
+						/* == */
+						Operator('=') => {
+							match iter.next() {
+								Some(Operator('=')) => {
+									operator = Some(ComparisonOperator::Equal);
+									break;
+								},
+
+								Some(Operator(x)) => return Err((format!("invalid operator '={x}'"), line)),
+								Some(x) => return Err((format!("expected '=' after '=', but got {x}"), line)),
+								_ => return Err((format!("expected '=' after '='"), line))
+							}
+						},
+						/* != */
+						Operator('!') => {
+							match iter.next() {
+								Some(Operator('=')) => {
+									operator = Some(ComparisonOperator::NotEqual);
+									break;
+								},
+
+								Some(Operator(x)) => return Err((format!("invalid operator '!{x}'"), line)),
+								Some(x) => return Err((format!("expected '=' after '!', but got {x}"), line)),
+								_ => return Err((format!("expected '=' after '!'"), line))
+							}
+						}
+						/* >, >= */
+						Operator('>') => {
+							if let Some(Operator('=')) = iter.clone().peekable().peek() {
+								operator = Some(ComparisonOperator::GreaterThanEqual);
+								iter.next();
+								break;
+							}
+
+							operator = Some(ComparisonOperator::GreaterThan);
+							break;
+						}
+						/* <, <= */
+						Operator('<') => {
+							if let Some(Operator('=')) = iter.clone().peekable().peek() {
+								operator = Some(ComparisonOperator::LessThanEqual);
+								iter.next();
+								break;
+							}
+							operator = Some(ComparisonOperator::LessThan);
+							break;
+						}
+						_ => expr1.push(x.clone())
+					}
+				}
+
+				let operator = match operator {
+					Some(x) => x,
+					None => return Err((String::from("expected an operator in if statement"), line))	
+				};
+
+				let mut expr2 = seperate_expression(&mut iter, '{');
 
 				/* the last element of the expression will be ), which we do not want so we get rid of it */
-				match expr.last() {
-					Some(Operator(')')) => expr.pop(),
+				match expr2.last() {
+					Some(Operator(')')) => expr2.pop(),
 
 					Some(x) => return Err((format!("expected ')' before '{{' in if statement, but got {x}"), line)),
 					_ => return Err((String::from("expected ')' before '{{' in if statement"), line))
 				};
 
-				println!("{:?}", expr);
+				ast.push(AstType::IfStatement(expr1, operator, expr2));
 			}
 			/* --------------------------- */
 			/*    variable declerations    */

@@ -344,6 +344,12 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 				state.textsect.push_str("\tret\n\n");
 				state.current_function = FunctionState::default();
 			},
+			/* ----------------------- */
+			/*      if statements      */
+			/* ----------------------- */
+			IfStatement(expr1, operator, expr2) => {
+				println!("{:?} [{:?}] {:?}", expr1, operator, expr2);
+			},
 			/* --------------------------- */
 			/*    variable declerations    */
 			/* --------------------------- */

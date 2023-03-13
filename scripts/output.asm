@@ -84,9 +84,10 @@ main:
 	mov rbp, rsp
 	sub rsp, 4
 
-	mov r11d, 1
-	add r11d, 1
-	mov edi, r11d
+	mov edi, 1
+	mov esi, 1
+	call sum
+	mov edi, eax
 	call sqr
 	mov r11d, eax
 	mov edi, 2
@@ -104,8 +105,5 @@ main:
 
 	mov eax, 0
 	leave
-	ret
-
-	pop rbp
 	ret
 
