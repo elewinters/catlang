@@ -51,7 +51,9 @@ struct State<'a> {
 	textsect: String,
 
 	functions: HashMap<String, Function<'a>>,
-	current_function: FunctionState
+	current_function: FunctionState,
+
+	labels: i64
 }
 
 /* given a string, this function will insert that string into the datasection */
@@ -246,8 +248,11 @@ fn call_function(state: &mut State, name: &str, args: &Vec<Expression>) -> Resul
 	for (register, expr_eval) in args_queue {
 		state.textsect.push_str(&format!("\tmov {register}, {expr_eval}\n"));
 	}
-	
+
+	/* other functions may modify r11, which cannot happen as that will mess up expressions*/
+	state.textsect.push_str(&format!("\n\tpush r11\n"));
 	state.textsect.push_str(&format!("\tcall {name}\n"));
+	state.textsect.push_str(&format!("\tpop r11\n\n"));
 	state.current_function.calls_funcs = true;
 
 	Ok(())
@@ -263,7 +268,9 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 		textsect: String::from("section .text\n\n"),
 
 		functions: HashMap::new(),
-		current_function: FunctionState::default()
+		current_function: FunctionState::default(),
+
+		labels: 0
 	};
 
 	for i in iter {
