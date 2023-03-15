@@ -64,6 +64,7 @@ struct CurrentFunctionState {
 /* theres only ever one instance of this and its always mutable */
 /* the reason why these arent just regular mut variables in the generate() function is because passing all of them to functions is a fucking pain */
 /* so i turned them into a struct!! this is the cleanest way to do this i promise */
+#[derive(Default)]
 struct State<'a> {
 	line: i64,
 
@@ -276,21 +277,16 @@ fn call_function(state: &mut State, name: &str, args: &Vec<Expression>) -> Resul
 
 /* returns the assembly output on success, returns a string containing error information on failure */
 pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
-	let mut iter = input.iter();
+	let iter = input.iter();
 
 	let mut state = State {
 		line: 1,
 		datasect: String::from("section .data\n"),
 		textsect: String::from("section .text\n\n"),
-
-		functions: HashMap::new(),
-		current_function: CurrentFunctionState::default(),
-
-		labels: 0,
-		in_if_statement: false
+		..State::default()
 	};
 
-	while let Some(i) = iter.next() {
+	for i in iter {
 		match i {
 			AstType::Newline => state.line += 1,
 			/* ---------------------------- */

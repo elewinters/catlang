@@ -247,7 +247,7 @@ pub fn parse(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 
 								Some(Operator(x)) => return Err((format!("invalid operator '={x}'"), line)),
 								Some(x) => return Err((format!("expected '=' after '=', but got {x}"), line)),
-								_ => return Err((format!("expected '=' after '='"), line))
+								_ => return Err((String::from("expected '=' after '='"), line))
 							}
 						},
 						/* != */
@@ -260,7 +260,7 @@ pub fn parse(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 
 								Some(Operator(x)) => return Err((format!("invalid operator '!{x}'"), line)),
 								Some(x) => return Err((format!("expected '=' after '!', but got {x}"), line)),
-								_ => return Err((format!("expected '=' after '!'"), line))
+								_ => return Err((String::from("expected '=' after '!'"), line))
 							}
 						}
 						/* >, >= */
