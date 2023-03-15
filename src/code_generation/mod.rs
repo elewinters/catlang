@@ -53,7 +53,8 @@ struct State<'a> {
 	functions: HashMap<String, Function<'a>>,
 	current_function: FunctionState,
 
-	labels: i64
+	labels: i64,
+	in_if_statement: bool,
 }
 
 /* given a string, this function will insert that string into the datasection */
@@ -260,7 +261,7 @@ fn call_function(state: &mut State, name: &str, args: &Vec<Expression>) -> Resul
 
 /* returns the assembly output on success, returns a string containing error information on failure */
 pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
-	let iter = input.iter();
+	let mut iter = input.iter();
 
 	let mut state = State {
 		line: 1,
@@ -270,10 +271,11 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 		functions: HashMap::new(),
 		current_function: FunctionState::default(),
 
-		labels: 0
+		labels: 0,
+		in_if_statement: false
 	};
 
-	for i in iter {
+	while let Some(i) = iter.next() {
 		match i {
 			AstType::Newline => state.line += 1,
 			/* ---------------------------- */
@@ -332,30 +334,64 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 				}
 			}
 			/* -------------------------- */
-			/*        function end        */
+			/*          block end         */
 			/* -------------------------- */
 			ScopeEnd => {
-				if (state.current_function.calls_funcs && state.current_function.stacksize != 0) {
-					state.textsect.push_str("\tleave\n");
+				if (!state.in_if_statement) {
+					if (state.current_function.calls_funcs && state.current_function.stacksize != 0) {
+						state.textsect.push_str("\tleave\n");
+					}
+					else {
+						state.textsect.push_str("\tpop rbp\n");
+					}
+					
+					/* we want to subtract the value of stackspace from rsp if we call other functions */
+					/* and if the aren't any local variables in the current function */
+					if (state.current_function.calls_funcs && state.current_function.stacksize != 0) {
+						state.textsect.insert_str(state.current_function.stack_subtraction_index, &format!("\tsub rsp, {}\n", state.current_function.stacksize));
+					}
+	
+					state.textsect.push_str("\tret\n\n");
+					state.current_function = FunctionState::default();
 				}
 				else {
-					state.textsect.push_str("\tpop rbp\n");
+					state.textsect.push_str(&format!(".L{}:\n", state.labels));
+					state.labels += 1;
+					state.in_if_statement = false;
 				}
-				
-				/* we want to subtract the value of stackspace from rsp if we call other functions */
-				/* and if the aren't any local variables in the current function */
-				if (state.current_function.calls_funcs && state.current_function.stacksize != 0) {
-					state.textsect.insert_str(state.current_function.stack_subtraction_index, &format!("\tsub rsp, {}\n", state.current_function.stacksize));
-				}
-
-				state.textsect.push_str("\tret\n\n");
-				state.current_function = FunctionState::default();
 			},
 			/* ----------------------- */
 			/*      if statements      */
 			/* ----------------------- */
 			IfStatement(expr1, operator, expr2) => {
+				let (expr_word, expr_type) = match &expr1[0] {
+					TokenType::Identifier(x) => {
+						match state.current_function.local_variables.get(x) {
+							Some(x) => (get_size_of_type(&x.vartype, state.line)?.0, x.vartype.clone()),
+							None => return Err((format!("undefined variable '{x}' in if statement"), state.line))
+						}
+					}
+					TokenType::IntLiteral(_) => (WordType::DoubleWord, String::from("i32")),
+					TokenType::StringLiteral(_) => (WordType::QuadWord, String::from("i64")),
+					
+					err => return Err((format!("expected an identifier, int literal, or string literal as the first element of if statement, but got {err} instead"), state.line))
+				};
+
+				let value = eval_expression(&mut state, expr1, &expr_type)?;
+				let value2 = eval_expression(&mut state, expr2, &expr_type)?;
+
+				let accumulator = get_accumulator(&expr_word);
+
+				if (value != accumulator) {
+					state.textsect.push_str(&format!("\tmov {accumulator}, {expr_word} {value}\n"));
+				}
+				
+				state.textsect.push_str(&format!("\tcmp {accumulator}, {value2}\n"));
+				state.textsect.push_str(&format!("\tjne .L{}\n", state.labels));
+
 				println!("{:?} [{:?}] {:?}", expr1, operator, expr2);
+				
+				state.in_if_statement = true;
 			},
 			/* --------------------------- */
 			/*    variable declerations    */

@@ -1,7 +1,9 @@
 fn puts(a: i64);
+fn exit(code: i32);
 fn printf(fmt: i64, n: i32);
 fn putchar(c: i8);
 fn strlen(ptr: i64) -> i32;
+fn strcmp(ptr: i64, ptr2: i64) -> i32;
 
 fn myputchar(c: i8) {
 	putchar(c);
@@ -28,13 +30,13 @@ fn sqr(x: i32) -> i32 {
 	return x * x;
 }
 
-fn main() -> i32 {
-	let x: i32 = sqr(sum(sum(1+0, 1), sum(1, 1+0))) + sqr(2) + sqr(2) + sqr(2) + sqr(2) + sqr(2); 
+fn main(argc: i32) -> i32 {
+	let ret: i32 = strcmp("hi", "hi");
+	if (ret == 0) {
+		puts("condition is true");
+		exit(0);
+	}
 
-	asm!("xor rax, rax");
-	printf("%d\n", x);
-
-	puts("hello" + 1);
-
+	puts("condition is false");
 	return 0;
 }

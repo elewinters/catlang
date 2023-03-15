@@ -1,12 +1,16 @@
 section .data
-	L0: db `%d\n`, 0
-	L1: db `hello`, 0
+	L0: db `hi`, 0
+	L1: db `hi`, 0
+	L2: db `condition is true`, 0
+	L3: db `success :)`, 0
 section .text
 
 extern puts
+extern exit
 extern printf
 extern putchar
 extern strlen
+extern strcmp
 global myputchar
 myputchar:
 	push rbp
@@ -108,91 +112,37 @@ global main
 main:
 	push rbp
 	mov rbp, rsp
-	sub rsp, 4
+	sub rsp, 8
 
-	mov r11d, 1
-	add r11d, 0
-	mov edi, r11d
-	mov esi, 1
-
-	push r11
-	call sum
-	pop r11
-
-	mov r11d, 1
-	add r11d, 0
-	mov edi, 1
-	mov esi, r11d
-
-	push r11
-	call sum
-	pop r11
-
-	mov edi, eax
-	mov esi, eax
-
-	push r11
-	call sum
-	pop r11
-
-	mov edi, eax
-
-	push r11
-	call sqr
-	pop r11
-
-	mov r11d, eax
-	mov r11d, 1
-	add r11d, 1
-	mov edi, r11d
-
-	push r11
-	call sqr
-	pop r11
-
-	add r11d, eax
-	mov edi, 2
-
-	push r11
-	call sqr
-	pop r11
-
-	add r11d, eax
-	mov edi, 2
-
-	push r11
-	call sqr
-	pop r11
-
-	add r11d, eax
-	mov edi, 2
-
-	push r11
-	call sqr
-	pop r11
-
-	add r11d, eax
-	mov edi, 2
-
-	push r11
-	call sqr
-	pop r11
-
-	add r11d, eax
-	mov dword [rbp-4], r11d
-
-	xor rax, rax
+	mov dword [rbp-4], edi
 	mov rdi, L0
-	mov esi, [rbp-4]
+	mov rsi, L1
 
 	push r11
-	call printf
+	call strcmp
+	pop r11
+
+	mov dword [rbp-8], eax
+
+	mov eax, dword [rbp-8]
+	cmp eax, 2
+	jne .L0
+	mov rdi, L2
+
+	push r11
+	call puts
 	pop r11
 
 
-	mov r11, L1
-	add r11, 1
-	mov rdi, r11
+	mov edi, 1
+
+	push r11
+	call exit
+	pop r11
+
+
+.L0:
+	mov rdi, L3
 
 	push r11
 	call puts
