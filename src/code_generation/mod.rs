@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 mod registers;
+use registers::*;
 
 use crate::parser::AstType::{self, *};
 use crate::lexer::TokenType::{self, *};
@@ -15,16 +16,35 @@ macro_rules! warn {
 	}
 }
 
-use registers::*;
-#[derive(Clone)]
-struct Function<'a> {
-	arg_types: &'a Vec<String>, /* types of paramaters, but not the names of the paramaters */
-	return_type: &'a Option<String>
+#[derive(Clone, PartialEq)]
+struct DataType {
+	string: String, /* i8, i16, i32, i64 */
+	word: WordType,
+	byte_size: i32
+}
+
+impl DataType {
+	fn new(input: &str, line: i64) -> Result<Self, (String, i64)> {
+		Ok(match input {
+			"i8" => Self { string: input.to_owned(), word: WordType::Byte, byte_size: 1 },
+			"i16" => Self { string: input.to_owned(), word: WordType::Word, byte_size: 2 },
+			"i32" => Self { string: input.to_owned(), word: WordType::DoubleWord, byte_size: 4 },
+			"i64" => Self { string: input.to_owned(), word: WordType::QuadWord, byte_size: 8 },
+			
+			_ => return Err((format!("'{input}' is not a valid type"), line)) 
+		})
+	}
 }
 
 struct Variable {
 	addr: String,
-	vartype: String
+	vartype: DataType
+}
+
+#[derive(Clone)]
+struct Function<'a> {
+	arg_types: &'a Vec<String>, /* types of paramaters, but not the names of the paramaters */
+	return_type: Option<DataType>
 }
 
 /* this contains all of the state of the current function we're working with */
@@ -33,7 +53,7 @@ struct Variable {
 #[derive(Default)]
 struct FunctionState {
 	local_variables: HashMap<String, Variable>,
-	return_type: Option<String>,
+	return_type: Option<DataType>,
 	stacksize: i32,
 	stack_subtraction_index: usize,
 
@@ -76,7 +96,7 @@ fn resolve_string_literal(datasect: &mut String, literal: &str) -> String {
 /* an example input of [5, +, 5, +, strlen, (, "12345", )] with expected_type as i32 would give you the result 'r11d', which is where the result of this expression is stored at (the result is 15 by the way) */
 /* another example input of ["hello world"] would return the identifier for this string literal, so something like L0 or L1 */
 /* another example input of [5] would return 5 */
-fn eval_expression(state: &mut State, expr: &Expression, expected_type: &str) -> Result<String, (String, i64)> {
+fn eval_expression(state: &mut State, expr: &Expression, expected_type: &DataType) -> Result<String, (String, i64)> {
 	let mut iter = expr.iter();
 
 	/* what this function does is it evaluates a single element of an expression, a sort of "miniexpression" */
@@ -84,7 +104,7 @@ fn eval_expression(state: &mut State, expr: &Expression, expected_type: &str) ->
 	/* if you feed it the string literal "hello" it will return L0, L1, etc */
 	/* if you feed it 'strlen, (, "hi", )' it will return rax/eax */
 	/* if you feed it 'var' it will return its address on the stack (like [rbp-16]) */
-	fn eval_miniexpression(state: &mut State, iter: &mut core::slice::Iter<TokenType>, expected_type: &str) -> Result<String, (String, i64)> {
+	fn eval_miniexpression(state: &mut State, iter: &mut core::slice::Iter<TokenType>, expected_type: &DataType) -> Result<String, (String, i64)> {
 		Ok(match (iter.next(), iter.clone().peekable().peek()) {
 			(Some(IntLiteral(x)), _) => x.to_string(),
 			(Some(StringLiteral(x)), _) => resolve_string_literal(&mut state.datasect, x),
@@ -99,17 +119,16 @@ fn eval_expression(state: &mut State, expr: &Expression, expected_type: &str) ->
 				/* this unwrap will never fail because call_function will have handled it already at this point */
 				let function = state.functions.get(function_name).unwrap();
 	
-				let return_type = match function.return_type {
+				let return_type = match &function.return_type {
 					Some(x) => x,
 					None => return Err((format!("attempted to get return value of function '{function_name}', but it does not return anything"), state.line))
 				};
 	
 				if (return_type != expected_type) {
-					return Err((format!("expected expression to evaluate to '{expected_type}', but the return type of '{function_name}' is '{return_type}'"), state.line));
+					return Err((format!("expected expression to evaluate to '{}', but the return type of '{function_name}' is '{}'", expected_type.string, return_type.string), state.line));
 				}
-	
-				let (word, _) = get_size_of_type(return_type, state.line)?;
-				get_accumulator(&word).to_owned()
+
+				get_accumulator(&return_type.word).to_owned()
 			}
 
 			/* variables */
@@ -122,8 +141,8 @@ fn eval_expression(state: &mut State, expr: &Expression, expected_type: &str) ->
 				};
 	
 				/* mismatch in types */
-				if (var.vartype != expected_type) {
-					return Err((format!("expected expression to evaluate to type '{expected_type}', but the type of '{x}' is '{}'", var.vartype), state.line));
+				if (&var.vartype != expected_type) {
+					return Err((format!("expected expression to evaluate to type '{}', but the type of '{x}' is '{}'", expected_type.string, var.vartype.string), state.line));
 				}
 	
 				var.addr.clone()
@@ -134,9 +153,7 @@ fn eval_expression(state: &mut State, expr: &Expression, expected_type: &str) ->
 		})
 	}
 
-	let (word, _) = get_size_of_type(expected_type, state.line)?;
-	let root_register = get_accumulator2(&word);
-
+	let root_register = get_accumulator2(&expected_type.word);
 	let root_value = eval_miniexpression(state, &mut iter, expected_type)?;
 	
 	/* if the expression only has one element we just return its root */
@@ -165,8 +182,8 @@ fn eval_expression(state: &mut State, expr: &Expression, expected_type: &str) ->
 			Operator('/') => {
 				warn!("divison is an unstable feature", state.line);
 
-				let accumulator = get_accumulator(&word);
-				let accumulator3 = get_accumulator3(&word);
+				let accumulator = get_accumulator(&expected_type.word);
+				let accumulator3 = get_accumulator3(&expected_type.word);
 
 				/* this is where we have to place the first value of division operation (accumulator) */
 				state.textsect.push_str("\txor rax, rax\n");
@@ -176,7 +193,7 @@ fn eval_expression(state: &mut State, expr: &Expression, expected_type: &str) ->
 				state.textsect.push_str("\tcdq\n");
 				
 
-				state.textsect.push_str(&format!("\tmov {accumulator}, {word} {root_register}\n"));
+				state.textsect.push_str(&format!("\tmov {accumulator}, {} {root_register}\n", expected_type.word));
 				state.textsect.push_str(&format!("\tmov {accumulator3}, {val}\n"));
 				state.textsect.push_str(&format!("\tidiv {accumulator3}\n"));
 
@@ -192,19 +209,17 @@ fn eval_expression(state: &mut State, expr: &Expression, expected_type: &str) ->
 }
 
 /* adds a variable to the local_variables hashmap */
-fn add_variable(state: &mut State, name: &str, vartype: &str, initval: Option<&str>) -> Result<(), (String, i64)> {
-	/* we dont make the 2nd value of this tuple '_' for once! */
-	let (word, bytesize) = get_size_of_type(vartype, state.line)?;
-	state.current_function.stacksize += bytesize;
+fn add_variable(state: &mut State, name: &str, vartype: &DataType, initval: Option<&str>) -> Result<(), (String, i64)> {
+	state.current_function.stacksize += vartype.byte_size;
 
 	let addr = format!("[rbp-{}]", state.current_function.stacksize);
 	if let Some(initval) = initval {
-		state.textsect.push_str(&format!("\tmov {word} {addr}, {initval}\n"));
+		state.textsect.push_str(&format!("\tmov {} {addr}, {initval}\n", vartype.word));
 	}
 
 	state.current_function.local_variables.insert(name.to_string(), Variable {
 		addr, 
-		vartype: vartype.to_owned() 
+		vartype: vartype.clone()
 	});
 
 	Ok(())
@@ -237,10 +252,10 @@ fn call_function(state: &mut State, name: &str, args: &Vec<Expression>) -> Resul
 
 	/* insert arguments to the queue */
 	for (i, v) in args.iter().enumerate() {
-		let expr_evaluation = eval_expression(state, v, &function.arg_types[i])?;
+		let expr_evaluation = eval_expression(state, v, &DataType::new(&function.arg_types[i], state.line)?)?;
 
-		let (word, _) = get_size_of_type(&function.arg_types[i], state.line)?;
-		let register = get_register(i, &word, state.line)?;
+		let argtype = DataType::new(&function.arg_types[i], state.line)?;
+		let register = get_register(i, &argtype.word, state.line)?;
 
 		args_queue.push((register, expr_evaluation));
 	}
@@ -251,9 +266,9 @@ fn call_function(state: &mut State, name: &str, args: &Vec<Expression>) -> Resul
 	}
 
 	/* other functions may modify r11, which cannot happen as that will mess up expressions*/
-	state.textsect.push_str(&format!("\n\tpush r11\n"));
+	state.textsect.push_str("\n\tpush r11\n");
 	state.textsect.push_str(&format!("\tcall {name}\n"));
-	state.textsect.push_str(&format!("\tpop r11\n\n"));
+	state.textsect.push_str("\tpop r11\n\n");
 	state.current_function.calls_funcs = true;
 
 	Ok(())
@@ -289,20 +304,30 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 
 				/* add arguments to the stack */
 				for i in 0..args.0.len() {
-					let (word, _) = get_size_of_type(&args.1[i], state.line)?;
-					let register = get_register(i, &word, state.line)?;
+					let datatype = DataType::new(&args.1[i], state.line)?;
+					let register = get_register(i, &datatype.word, state.line)?;
 
-					add_variable(&mut state, &args.0[i], &args.1[i], Some(register))?;
+					add_variable(&mut state, &args.0[i], &datatype, Some(register))?;
 				}
+
+				let return_type = match return_type {
+					Some(x) => Some(DataType::new(x, state.line)?),
+					None => None,
+				};
 				
-				state.functions.insert(name.to_string(), Function { arg_types: &args.1, return_type });
-				state.current_function.return_type = return_type.clone();
+				state.functions.insert(name.to_string(), Function { arg_types: &args.1, return_type: return_type.clone() });
+				state.current_function.return_type = return_type;
 			},
 			/* --------------------------- */
 			/*     function prototypes     */
 			/* --------------------------- */
 			FunctionPrototype(name, args, return_type) => {
 				state.textsect.push_str(&format!("extern {name}\n"));
+
+				let return_type = match return_type {
+					Some(x) => Some(DataType::new(x, state.line)?),
+					None => None,
+				};
 
 				state.functions.insert(name.to_string(), Function { arg_types: args, return_type });
 			}
@@ -323,9 +348,7 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 				};
 
 				let return_value = eval_expression(&mut state, expr, &return_type)?;
-
-				let (word, _) = get_size_of_type(&return_type, state.line)?;
-				let accumulator = get_accumulator(&word);
+				let accumulator = get_accumulator(&return_type.word);
 
 				/* the return_value can sometimes be the accumulator */
 				/* which means that we'll be moving rax to rax, which is just unnecessary */
@@ -364,15 +387,15 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 			/*      if statements      */
 			/* ----------------------- */
 			IfStatement(expr1, operator, expr2) => {
-				let (expr_word, expr_type) = match &expr1[0] {
+				let expr_type = match &expr1[0] {
 					TokenType::Identifier(x) => {
 						match state.current_function.local_variables.get(x) {
-							Some(x) => (get_size_of_type(&x.vartype, state.line)?.0, x.vartype.clone()),
+							Some(x) => x.vartype.clone(),
 							None => return Err((format!("undefined variable '{x}' in if statement"), state.line))
 						}
 					}
-					TokenType::IntLiteral(_) => (WordType::DoubleWord, String::from("i32")),
-					TokenType::StringLiteral(_) => (WordType::QuadWord, String::from("i64")),
+					TokenType::IntLiteral(_) => DataType::new("i32", state.line)?,
+					TokenType::StringLiteral(_) => DataType::new("i64", state.line)?,
 					
 					err => return Err((format!("expected an identifier, int literal, or string literal as the first element of if statement, but got {err} instead"), state.line))
 				};
@@ -380,10 +403,10 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 				let value = eval_expression(&mut state, expr1, &expr_type)?;
 				let value2 = eval_expression(&mut state, expr2, &expr_type)?;
 
-				let accumulator = get_accumulator(&expr_word);
+				let accumulator = get_accumulator(&expr_type.word);
 
 				if (value != accumulator) {
-					state.textsect.push_str(&format!("\tmov {accumulator}, {expr_word} {value}\n"));
+					state.textsect.push_str(&format!("\tmov {accumulator}, {} {value}\n", expr_type.word));
 				}
 				
 				state.textsect.push_str(&format!("\tcmp {accumulator}, {value2}\n"));
@@ -398,8 +421,10 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 			/* --------------------------- */
 			VariableDefinition(name, vartype, initexpr) => {
 				/* now we evaluate expression */
-				let value = eval_expression(&mut state, initexpr, vartype)?;
-				add_variable(&mut state, name, vartype, Some(&value))?;
+				let vartype = DataType::new(vartype, state.line)?;
+
+				let value = eval_expression(&mut state, initexpr, &vartype)?;
+				add_variable(&mut state, name, &vartype, Some(&value))?;
 
 				state.textsect.push('\n');
 			},
@@ -422,8 +447,8 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 						Identifier(varname) => { 
 							match state.current_function.local_variables.get(varname) {
 								Some(var) => {
-									if (var.vartype != "i64") {
-										return Err((format!("syscall! macro only accepts arguments of type i64, yet type of '{varname}' is {}", var.vartype), state.line));
+									if (var.vartype.string != "i64") {
+										return Err((format!("syscall! macro only accepts arguments of type i64, yet type of '{varname}' is {}", var.vartype.string), state.line));
 									}
 									var.addr.clone()
 								}

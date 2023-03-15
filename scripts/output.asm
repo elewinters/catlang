@@ -2,7 +2,7 @@ section .data
 	L0: db `hi`, 0
 	L1: db `hi`, 0
 	L2: db `condition is true`, 0
-	L3: db `success :)`, 0
+	L3: db `condition is false`, 0
 section .text
 
 extern puts
@@ -124,8 +124,15 @@ main:
 
 	mov dword [rbp-8], eax
 
+	mov edi, 0
+	mov esi, 0
+
+	push r11
+	call sum
+	pop r11
+
 	mov eax, dword [rbp-8]
-	cmp eax, 2
+	cmp eax, eax
 	jne .L0
 	mov rdi, L2
 
@@ -134,7 +141,7 @@ main:
 	pop r11
 
 
-	mov edi, 1
+	mov edi, 0
 
 	push r11
 	call exit

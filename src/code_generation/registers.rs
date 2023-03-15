@@ -1,6 +1,7 @@
 use std::fmt::{self, Display};
 use self::WordType::*;
 
+#[derive(Clone, PartialEq)]
 pub enum WordType {
 	Byte,
 	Word,
@@ -16,16 +17,6 @@ impl Display for WordType {
 			DoubleWord => write!(f, "dword"),
 			QuadWord => write!(f, "qword"),
 		}
-	}
-}
-
-pub fn get_size_of_type(input: &str, line: i64) -> Result<(WordType, i32), (String, i64)> {
-	match (input) {
-		"i8" => Ok((Byte, 1)),
-		"i16" => Ok((Word, 2)),
-		"i32" => Ok((DoubleWord, 4)),
-		"i64" => Ok((QuadWord, 8)),
-		_ => return Err((format!("'{input}' is not a valid type"), line))
 	}
 }
 
