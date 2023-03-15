@@ -51,7 +51,7 @@ struct Function<'a> {
 /* stuff like local variables, the size of the stack, etc */
 /* this will always be mutable, and there will always only be one instance of it */
 #[derive(Default)]
-struct FunctionState {
+struct CurrentFunctionState {
 	local_variables: HashMap<String, Variable>,
 	return_type: Option<DataType>,
 	stacksize: i32,
@@ -71,7 +71,7 @@ struct State<'a> {
 	textsect: String,
 
 	functions: HashMap<String, Function<'a>>,
-	current_function: FunctionState,
+	current_function: CurrentFunctionState,
 
 	labels: i64,
 	in_if_statement: bool,
@@ -284,7 +284,7 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 		textsect: String::from("section .text\n\n"),
 
 		functions: HashMap::new(),
-		current_function: FunctionState::default(),
+		current_function: CurrentFunctionState::default(),
 
 		labels: 0,
 		in_if_statement: false
@@ -375,7 +375,7 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 					}
 	
 					state.textsect.push_str("\tret\n\n");
-					state.current_function = FunctionState::default();
+					state.current_function = CurrentFunctionState::default();
 				}
 				else {
 					state.textsect.push_str(&format!(".L{}:\n", state.labels));

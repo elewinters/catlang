@@ -124,15 +124,8 @@ main:
 
 	mov dword [rbp-8], eax
 
-	mov edi, 0
-	mov esi, 0
-
-	push r11
-	call sum
-	pop r11
-
 	mov eax, dword [rbp-8]
-	cmp eax, eax
+	cmp eax, 0
 	jne .L0
 	mov rdi, L2
 
