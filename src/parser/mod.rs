@@ -35,12 +35,42 @@ pub enum ComparisonOperator {
 }
 
 pub fn print_ast(ast: &[AstType]) {
-	for i in ast {
-		match (i) {
-			AstType::Newline => println!("Newline"),
-			_ => print!("{:?} ", i)
+	let mut indent_level = 0;
+
+	fn print_tabs(indent_level: &mut i32) {
+		for _ in 0..*indent_level {
+			print!("\t");
 		}
 	}
+
+	for i in ast {
+		match (i) {
+			AstType::FunctionDefinition(name, (arg_names, arg_types), return_type) => {
+				print!("FunctionDefintion(name: {name}, arg_names: {:?}, arg_types: {:?}, return_type: {:?}) {{", arg_names, arg_types, return_type);
+				indent_level += 1;
+			}
+
+			AstType::IfStatement(_, _, _) => {
+				print_tabs(&mut indent_level);
+				print!("{:?} {{", i);
+				
+				indent_level += 1;
+			}
+
+			AstType::Newline => println!(),
+			AstType::ScopeEnd => {
+				indent_level -= 1;
+
+				print_tabs(&mut indent_level);
+				print!("}}");
+			}
+			_ => {
+				print_tabs(&mut indent_level);
+				print!("{:?} ", i);
+			}
+		}
+	}
+
 	println!();
 }
 
