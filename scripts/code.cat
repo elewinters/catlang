@@ -31,12 +31,20 @@ fn sqr(x: i32) -> i32 {
 }
 
 fn main(argc: i32) -> i32 {
+	if (argc == 1) {
+		puts("not enough arguments");
+		exit(1);
+	}
+
 	let ret: i32 = strcmp("hi", "hi");
 	if (ret == 0) {
 		puts("condition is true");
-		exit(0);
 	}
 
-	puts("condition is false");
+	if (ret != 0) {
+		puts("condition is false");
+	}
+
+	puts("exiting...");
 	return 0;
 }

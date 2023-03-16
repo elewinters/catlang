@@ -6,7 +6,7 @@ use registers::*;
 use crate::parser::AstType::{self, *};
 use crate::lexer::TokenType::{self, *};
 
-use crate::parser::{process_function_parameters, Expression};
+use crate::parser::{process_function_parameters, Expression, ComparisonOperator};
 
 macro_rules! warn {
 	($fmt:expr, $line:expr) => {
@@ -406,9 +406,19 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 				}
 				
 				state.textsect.push_str(&format!("\tcmp {accumulator}, {value2}\n"));
-				state.textsect.push_str(&format!("\tjne .L{}\n", state.labels));
+				
+				let jump_instruction = match operator {
+					ComparisonOperator::Equal => "jne",
+					ComparisonOperator::NotEqual => "je",
 
-				println!("{:?} [{:?}] {:?}", expr1, operator, expr2);
+					ComparisonOperator::GreaterThan => "jle",
+					ComparisonOperator::LessThan => "jge",
+
+					ComparisonOperator::GreaterThanEqual => "jl",
+					ComparisonOperator::LessThanEqual => "jg",
+				};
+
+				state.textsect.push_str(&format!("\t{jump_instruction} .L{}\n", state.labels));
 				
 				state.in_if_statement = true;
 			},

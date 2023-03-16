@@ -1,8 +1,10 @@
 section .data
-	L0: db `hi`, 0
+	L0: db `not enough arguments`, 0
 	L1: db `hi`, 0
-	L2: db `condition is true`, 0
-	L3: db `condition is false`, 0
+	L2: db `hi`, 0
+	L3: db `condition is true`, 0
+	L4: db `condition is false`, 0
+	L5: db `exiting...`, 0
 section .text
 
 extern puts
@@ -115,8 +117,26 @@ main:
 	sub rsp, 8
 
 	mov dword [rbp-4], edi
+	mov eax, dword [rbp-4]
+	cmp eax, 1
+	jne .L0
 	mov rdi, L0
-	mov rsi, L1
+
+	push r11
+	call puts
+	pop r11
+
+
+	mov edi, 1
+
+	push r11
+	call exit
+	pop r11
+
+
+.L0:
+	mov rdi, L1
+	mov rsi, L2
 
 	push r11
 	call strcmp
@@ -126,23 +146,27 @@ main:
 
 	mov eax, dword [rbp-8]
 	cmp eax, 0
-	jne .L0
-	mov rdi, L2
+	jne .L1
+	mov rdi, L3
 
 	push r11
 	call puts
 	pop r11
 
 
-	mov edi, 0
+.L1:
+	mov eax, dword [rbp-8]
+	cmp eax, 0
+	je .L2
+	mov rdi, L4
 
 	push r11
-	call exit
+	call puts
 	pop r11
 
 
-.L0:
-	mov rdi, L3
+.L2:
+	mov rdi, L5
 
 	push r11
 	call puts
