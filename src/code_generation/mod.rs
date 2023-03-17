@@ -154,7 +154,7 @@ fn eval_expression(state: &mut State, expr: &Expression, expected_type: &DataTyp
 		})
 	}
 
-	let root_register = get_accumulator2(&expected_type.word);
+	let root_register = get_rbx(&expected_type.word);
 	let root_value = eval_miniexpression(state, &mut iter, expected_type)?;
 	
 	/* if the expression only has one element we just return its root */
@@ -184,19 +184,17 @@ fn eval_expression(state: &mut State, expr: &Expression, expected_type: &DataTyp
 				warn!("divison is an unstable feature", state.line);
 
 				let accumulator = get_accumulator(&expected_type.word);
-				let accumulator3 = get_accumulator3(&expected_type.word);
+				let r11 = get_r11(&expected_type.word);
 
 				/* this is where we have to place the first value of division operation (accumulator) */
 				state.textsect.push_str("\txor rax, rax\n");
-				/* and this is where our divisor goes (accumulator3) */
-				state.textsect.push_str("\txor rbx, rbx\n");
 				/* clear out rdx before division (if we dont do this we will Crash the Fucking Program) */
 				state.textsect.push_str("\tcdq\n");
 				
 
 				state.textsect.push_str(&format!("\tmov {accumulator}, {} {root_register}\n", expected_type.word));
-				state.textsect.push_str(&format!("\tmov {accumulator3}, {val}\n"));
-				state.textsect.push_str(&format!("\tidiv {accumulator3}\n"));
+				state.textsect.push_str(&format!("\tmov {r11}, {val}\n"));
+				state.textsect.push_str(&format!("\tidiv {r11}\n"));
 
 				state.textsect.push_str(&format!("\tmov {root_register}, {accumulator}\n"));
 			}
@@ -266,10 +264,7 @@ fn call_function(state: &mut State, name: &str, args: &Vec<Expression>) -> Resul
 		state.textsect.push_str(&format!("\tmov {register}, {expr_eval}\n"));
 	}
 
-	/* other functions may modify r11, which cannot happen as that will mess up expressions*/
-	state.textsect.push_str("\n\tpush r11\n");
-	state.textsect.push_str(&format!("\tcall {name}\n"));
-	state.textsect.push_str("\tpop r11\n\n");
+	state.textsect.push_str(&format!("\tcall {name}\n\n"));
 	state.current_function.calls_funcs = true;
 
 	Ok(())
@@ -294,6 +289,7 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 			/* ---------------------------- */
 			FunctionDefinition(name, args, return_type) => {
 				state.textsect.push_str(&format!("global {name}\n{name}:\n"));
+				state.textsect.push_str("\tpush rbx\n");
 				state.textsect.push_str("\tpush rbp\n\tmov rbp, rsp\n\n");
 				
 				state.current_function.stack_subtraction_index = state.textsect.len() - 1;
@@ -363,6 +359,8 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 					else {
 						state.textsect.push_str("\tpop rbp\n");
 					}
+
+					state.textsect.push_str("\tpop rbx\n");
 					
 					/* we want to subtract the value of stackspace from rsp if we call other functions */
 					/* and if the aren't any local variables in the current function */

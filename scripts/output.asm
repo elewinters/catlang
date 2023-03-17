@@ -4,7 +4,8 @@ section .data
 	L2: db `hi`, 0
 	L3: db `condition is true`, 0
 	L4: db `condition is false`, 0
-	L5: db `exiting...`, 0
+	L5: db `%d\n`, 0
+	L6: db `exiting...`, 0
 section .text
 
 extern puts
@@ -15,66 +16,53 @@ extern strlen
 extern strcmp
 global myputchar
 myputchar:
+	push rbx
 	push rbp
 	mov rbp, rsp
 	sub rsp, 1
 
 	mov byte [rbp-1], dil
 	mov dil, [rbp-1]
-
-	push r11
 	call putchar
-	pop r11
 
 
 	mov dil, 10
-
-	push r11
 	call putchar
-	pop r11
 
 
 	leave
+	pop rbx
 	ret
 
 global abc
 abc:
+	push rbx
 	push rbp
 	mov rbp, rsp
 
 	mov dil, 65
-
-	push r11
 	call putchar
-	pop r11
 
 
 	mov dil, 66
-
-	push r11
 	call putchar
-	pop r11
 
 
 	mov dil, 67
-
-	push r11
 	call putchar
-	pop r11
 
 
 	mov dil, 10
-
-	push r11
 	call putchar
-	pop r11
 
 
 	pop rbp
+	pop rbx
 	ret
 
 global div
 div:
+	push rbx
 	push rbp
 	mov rbp, rsp
 
@@ -83,64 +71,61 @@ div:
 	mov eax, edi
 	idiv esi
 	pop rbp
+	pop rbx
 	ret
 
 global sum
 sum:
+	push rbx
 	push rbp
 	mov rbp, rsp
 
 	mov dword [rbp-4], edi
 	mov dword [rbp-8], esi
-	mov r11d, [rbp-4]
-	add r11d, [rbp-8]
-	mov eax, r11d
+	mov ebx, [rbp-4]
+	add ebx, [rbp-8]
+	mov eax, ebx
 	pop rbp
+	pop rbx
 	ret
 
 global sqr
 sqr:
+	push rbx
 	push rbp
 	mov rbp, rsp
 
 	mov dword [rbp-4], edi
-	mov r11d, [rbp-4]
-	imul r11d, [rbp-4]
-	mov eax, r11d
+	mov ebx, [rbp-4]
+	imul ebx, [rbp-4]
+	mov eax, ebx
 	pop rbp
+	pop rbx
 	ret
 
 global main
 main:
+	push rbx
 	push rbp
 	mov rbp, rsp
-	sub rsp, 8
+	sub rsp, 12
 
 	mov dword [rbp-4], edi
 	mov eax, dword [rbp-4]
 	cmp eax, 1
 	jne .L0
 	mov rdi, L0
-
-	push r11
 	call puts
-	pop r11
 
 
 	mov edi, 1
-
-	push r11
 	call exit
-	pop r11
 
 
 .L0:
 	mov rdi, L1
 	mov rsi, L2
-
-	push r11
 	call strcmp
-	pop r11
 
 	mov dword [rbp-8], eax
 
@@ -148,10 +133,7 @@ main:
 	cmp eax, 0
 	jne .L1
 	mov rdi, L3
-
-	push r11
 	call puts
-	pop r11
 
 
 .L1:
@@ -159,21 +141,50 @@ main:
 	cmp eax, 0
 	je .L2
 	mov rdi, L4
-
-	push r11
 	call puts
-	pop r11
 
 
 .L2:
-	mov rdi, L5
+	mov edi, 5
+	mov esi, 5
+	call sum
 
-	push r11
+	mov ebx, eax
+	mov edi, 5
+	mov esi, 5
+	call sum
+
+	add ebx, eax
+	mov edi, 5
+	mov esi, 5
+	call sum
+
+	add ebx, eax
+	mov edi, 5
+	mov esi, 5
+	call sum
+
+	add ebx, eax
+	xor rax, rax
+	cdq
+	mov eax, dword ebx
+	mov r11d, 2
+	idiv r11d
+	mov ebx, eax
+	mov dword [rbp-12], ebx
+
+	xor rax, rax
+	mov rdi, L5
+	mov esi, [rbp-12]
+	call printf
+
+
+	mov rdi, L6
 	call puts
-	pop r11
 
 
 	mov eax, 0
 	leave
+	pop rbx
 	ret
 

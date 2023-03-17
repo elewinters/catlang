@@ -29,21 +29,21 @@ pub fn get_accumulator(word: &WordType) -> &'static str {
 	}
 }
 
-pub fn get_accumulator2(word: &WordType) -> &'static str {
-	match word {
-		Byte => "r11b",
-		Word => "r11w",
-		DoubleWord => "r11d",
-		QuadWord => "r11"
-	}
-}
-
-pub fn get_accumulator3(word: &WordType) -> &'static str {
+pub fn get_rbx(word: &WordType) -> &'static str {
 	match word {
 		Byte => "bl",
 		Word => "bx",
 		DoubleWord => "ebx",
 		QuadWord => "rbx"
+	}
+}
+
+pub fn get_r11(word: &WordType) -> &'static str {
+	match word {
+		Byte => "r11b",
+		Word => "r11w",
+		DoubleWord => "r11d",
+		QuadWord => "r11"
 	}
 }
 
