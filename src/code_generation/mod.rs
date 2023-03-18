@@ -435,7 +435,7 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 			/* -------------------------- */
 			/*           macros           */
 			/* -------------------------- */
-			MacroCall("asm!", args) => {
+			MacroCall(name, args) if name == "asm!" => {
 				let instruction = match &args[0][0] {
 					StringLiteral(ref x) => x,
 					err => return Err((format!("expected token type to be a string literal, not {err}"), state.line))
@@ -443,7 +443,7 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 
 				state.textsect.push_str(&format!("\t{}\n", instruction));
 			},
-			MacroCall("syscall!", args) => {
+			MacroCall(name, args) if name == "syscall!" => {
 				for (i, v) in args.iter().enumerate() {
 					let v = match &(v[0]) {
 						IntLiteral(x) => x.to_owned(),

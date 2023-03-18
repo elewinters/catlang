@@ -1,23 +1,25 @@
 use crate::lexer::TokenType::{self, *};
+use crate::exit;
 
 pub type Expression = Vec<TokenType>;
+pub type BlockStatement = Vec<AstType>;
 
 #[derive(Debug)]
-pub enum AstType<'a> {
+pub enum AstType {
 	/* function name, tuple of vectors, first vector holds names, second one holds types, return type */
-	FunctionDefinition(&'a str, (Vec<String>, Vec<String>), Option<String>),
+	FunctionDefinition(String, (Vec<String>, Vec<String>), Option<String>),
 	/* function name, vector of types that the function accepts, return type */
-	FunctionPrototype(&'a str, Vec<String>, Option<String>),
+	FunctionPrototype(String, Vec<String>, Option<String>),
 	/* expression */
 	ReturnStatement(Expression),
 	/* first expression, operator, second expression */
 	IfStatement(Expression, ComparisonOperator, Expression),
 	/* variable name, type, and initializer value */
-	VariableDefinition(&'a str, &'a str, Expression),
+	VariableDefinition(String, String, Expression),
 	/* macro name, arguments */
-	MacroCall(&'a str, Vec<Expression>),
+	MacroCall(String, Vec<Expression>),
 	/* function name, arguments */
-	FunctionCall(&'a str, Vec<Expression>),
+	FunctionCall(String, Vec<Expression>),
 	/* this is so that functions know when they end */
 	ScopeEnd,
 	/* for counting the line number in parser.rs */
@@ -90,6 +92,23 @@ fn seperate_expression(iter: &mut core::slice::Iter<TokenType>, terminator: char
 	expression
 }
 
+fn seperate_block_statement(iter: &mut core::slice::Iter<TokenType>) -> BlockStatement {
+	let mut block_statement_tokens = Vec::new();
+
+	for i in iter.by_ref() {
+		match i {
+			Operator('}') => break,
+			_ => block_statement_tokens.push(i.clone())
+		}
+	}
+
+	/* we return here if we parsed the tokens successfully */
+	match parse(block_statement_tokens) {
+		Ok(x) => x,
+		Err((err, line)) => exit!(format!("[line {line}] {}", err))
+	}
+}
+
 /* no idea how this function works i know its extremely messy just dont worry about it */
 /* think of it as a little black box that magically processes your function paramaters */
 pub fn process_function_parameters(iter: &mut core::slice::Iter<TokenType>) -> Vec<Expression> {
@@ -142,7 +161,7 @@ pub fn process_function_parameters(iter: &mut core::slice::Iter<TokenType>) -> V
 	arguments
 }
 
-pub fn parse(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
+pub fn parse(input: Vec<TokenType>) -> Result<Vec<AstType>, (String, i64)> {
 	let mut ast: Vec<AstType> = Vec::new();
 	let mut line: i64 = 1;
 
@@ -238,10 +257,10 @@ pub fn parse(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 				}
 				
 				if (!is_proto) {
-					ast.push(AstType::FunctionDefinition(function_name, (arg_names, arg_types), return_type));
+					ast.push(AstType::FunctionDefinition(function_name.to_owned(), (arg_names, arg_types), return_type));
 				}
 				else {
-					ast.push(AstType::FunctionPrototype(function_name, arg_types, return_type));
+					ast.push(AstType::FunctionPrototype(function_name.to_owned(), arg_types, return_type));
 				}
 			},
 			/* ------------------------ */
@@ -367,7 +386,7 @@ pub fn parse(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 				let initexpr = seperate_expression(&mut iter, ';');
 
 				/* push everything to the AST */
-				ast.push(AstType::VariableDefinition(variable_name, variable_type, initexpr));
+				ast.push(AstType::VariableDefinition(variable_name.to_owned(), variable_type.to_owned(), initexpr));
 			}
 			/* ---------------------------- */
 			/*    function/macro calling    */
@@ -389,10 +408,10 @@ pub fn parse(input: &[TokenType]) -> Result<Vec<AstType>, (String, i64)> {
 				let arguments = process_function_parameters(&mut iter);
 
 				if (macro_or_function == "macro") {
-					ast.push(AstType::MacroCall(identifier, arguments));
+					ast.push(AstType::MacroCall(identifier.to_owned(), arguments));
 				}
 				else {
-					ast.push(AstType::FunctionCall(identifier, arguments));
+					ast.push(AstType::FunctionCall(identifier.to_owned(), arguments));
 				}
 			}
 			_ => (),

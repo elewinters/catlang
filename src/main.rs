@@ -8,6 +8,7 @@ mod lexer;
 mod parser;
 mod code_generation;
 
+#[macro_export]
 macro_rules! exit {
 	($fmt:expr) => {
 		{
@@ -66,7 +67,7 @@ fn main() {
 	/* --------------------------- */
 	/*   generate AST from tokens  */
 	/* --------------------------- */
-	let ast = match parser::parse(&tokens) {
+	let ast = match parser::parse(tokens) {
 		Ok(x) => x,
 		Err((err, line)) => exit!(format!("[line {line}] {}", err))
 	};
