@@ -342,7 +342,6 @@ pub fn generate(state: &mut State, input: &[AstType]) -> Result<(), (String, i64
 			/* -------------------------- */
 			FunctionCall(name, args) => {
 				call_function(state, name, args)?;
-				state.textsect.push('\n');
 			},
 			/* ------------------------ */
 			/*    function returning    */

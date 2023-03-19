@@ -25,10 +25,8 @@ myputchar:
 	mov dil, [rbp-1]
 	call putchar
 
-
 	mov dil, 10
 	call putchar
-
 
 	leave
 	pop rbx
@@ -43,18 +41,14 @@ abc:
 	mov dil, 65
 	call putchar
 
-
 	mov dil, 66
 	call putchar
-
 
 	mov dil, 67
 	call putchar
 
-
 	mov dil, 10
 	call putchar
-
 
 	pop rbp
 	pop rbx
@@ -117,10 +111,8 @@ main:
 	mov rdi, L0
 	call puts
 
-
 	mov edi, 1
 	call exit
-
 
 .L0:
 	mov rdi, L1
@@ -135,14 +127,12 @@ main:
 	mov rdi, L3
 	call puts
 
-
 .L1:
 	mov eax, dword [rbp-8]
 	cmp eax, 0
 	je .L2
 	mov rdi, L4
 	call puts
-
 
 .L2:
 	mov edi, 5
@@ -178,10 +168,8 @@ main:
 	mov esi, [rbp-12]
 	call printf
 
-
 	mov rdi, L6
 	call puts
-
 
 	mov eax, 0
 	leave
