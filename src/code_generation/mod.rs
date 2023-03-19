@@ -6,8 +6,7 @@ use registers::*;
 use crate::parser::AstType::{self, *};
 use crate::lexer::TokenType::{self, *};
 
-use crate::parser::{process_function_parameters, Expression, ComparisonOperator, BlockStatement};
-use crate::exit;
+use crate::parser::{process_function_parameters, Expression, ComparisonOperator};
 
 macro_rules! warn {
 	($fmt:expr, $line:expr) => {
@@ -44,8 +43,8 @@ struct Variable {
 }
 
 #[derive(Clone)]
-struct Function<'a> {
-	arg_types: &'a Vec<String>, /* types of paramaters, but not the names of the paramaters */
+struct Function {
+	arg_types: Vec<String>, /* types of paramaters, but not the names of the paramaters */
 	return_type: Option<DataType>
 }
 
@@ -57,7 +56,6 @@ struct CurrentFunctionState {
 	local_variables: HashMap<String, Variable>,
 	return_type: Option<DataType>,
 	stacksize: i32,
-	stack_subtraction_index: usize,
 
 	calls_funcs: bool,
 }
@@ -67,13 +65,13 @@ struct CurrentFunctionState {
 /* the reason why these arent just regular mut variables in the generate() function is because passing all of them to functions is a fucking pain */
 /* so i turned them into a struct!! this is the cleanest way to do this i promise */
 #[derive(Default, Clone)]
-pub struct State<'a> {
+pub struct State {
 	line: i64,
 
-	datasect: String,
-	textsect: String,
+	pub datasect: String,
+	pub textsect: String,
 
-	functions: HashMap<String, Function<'a>>,
+	functions: HashMap<String, Function>,
 	current_function: CurrentFunctionState,
 
 	labels: i64,
@@ -92,21 +90,6 @@ fn resolve_string_literal(datasect: &mut String, literal: &str) -> String {
 
 		format!("L{}", LITERALS_AMOUNT - 1)
 	}
-}
-
-fn execute_block_statement(state: &mut State, block_statement: &BlockStatement) {
-	let mut state_copy = state.clone();
-	state_copy.datasect.clear();
-	state_copy.textsect.clear();
-
-	match generate(state_copy, block_statement) {
-		Ok(x) => {
-			state.datasect.push_str(&x.0);
-			state.textsect.push_str(&x.1);
-			state.line += (x.2 - state.line);
-		},
-		Err((err, line)) => exit!(format!("in if statement at [line {}]\n[line {}] {}", (state.line + 1), ((line - state.line) + state.line + 1), err))
-	};
 }
 
 /* evaluates an expression (aka a list of tokens) and returns the result where its stored at (or just its literal value if no operations were done on it) */
@@ -286,10 +269,9 @@ fn call_function(state: &mut State, name: &str, args: &Vec<Expression>) -> Resul
 	Ok(())
 }
 
-/* returns the (datasect, textsect, and how many lines it parsed) on success, returns a string containing error information on failure */
-pub fn generate(state: State, input: &[AstType]) -> Result<(String, String, i64), (String, i64)> {
+/* returns the state of the program on success, returns a string containing error information on failure */
+pub fn generate(state: &mut State, input: &[AstType]) -> Result<(), (String, i64)> {
 	let iter = input.iter();
-	let mut state = state;
 
 	for i in iter {
 		match i {
@@ -297,19 +279,19 @@ pub fn generate(state: State, input: &[AstType]) -> Result<(String, String, i64)
 			/* ---------------------------- */
 			/*     function definitions     */
 			/* ---------------------------- */
-			FunctionDefinition(name, args, return_type) => {
+			FunctionDefinition(name, args, return_type, body) => {
 				state.textsect.push_str(&format!("global {name}\n{name}:\n"));
 				state.textsect.push_str("\tpush rbx\n");
 				state.textsect.push_str("\tpush rbp\n\tmov rbp, rsp\n\n");
 				
-				state.current_function.stack_subtraction_index = state.textsect.len() - 1;
+				let stack_subtraction_index = state.textsect.len() - 1;
 
 				/* add arguments to the stack */
 				for i in 0..args.0.len() {
 					let datatype = DataType::new(&args.1[i], state.line)?;
 					let register = get_register(i, &datatype.word, state.line)?;
 
-					add_variable(&mut state, &args.0[i], &datatype, Some(register))?;
+					add_variable(state, &args.0[i], &datatype, Some(register))?;
 				}
 
 				let return_type = match return_type {
@@ -317,51 +299,13 @@ pub fn generate(state: State, input: &[AstType]) -> Result<(String, String, i64)
 					None => None,
 				};
 				
-				state.functions.insert(name.to_string(), Function { arg_types: &args.1, return_type: return_type.clone() });
+				state.functions.insert(name.to_string(), Function { arg_types: args.1.to_vec(), return_type: return_type.clone() });
 				state.current_function.return_type = return_type;
-			},
-			/* --------------------------- */
-			/*     function prototypes     */
-			/* --------------------------- */
-			FunctionPrototype(name, args, return_type) => {
-				state.textsect.push_str(&format!("extern {name}\n"));
 
-				let return_type = match return_type {
-					Some(x) => Some(DataType::new(x, state.line)?),
-					None => None,
-				};
+				/* parse and append the body of the funnction */
+				generate(state, body)?;
 
-				state.functions.insert(name.to_string(), Function { arg_types: args, return_type });
-			}
-			/* -------------------------- */
-			/*      function calling      */
-			/* -------------------------- */
-			FunctionCall(name, args) => {
-				call_function(&mut state, name, args)?;
-				state.textsect.push('\n');
-			},
-			/* ------------------------ */
-			/*    function returning    */
-			/* ------------------------ */
-			ReturnStatement(expr) => {
-				let return_type = match state.current_function.return_type {
-					Some(ref x) => x.clone(),
-					None => return Err((String::from("attempted to return from function that does not return anything, did you forget to specify the return type in the signature?"), state.line))
-				};
-
-				let return_value = eval_expression(&mut state, expr, &return_type)?;
-				let accumulator = get_accumulator(&return_type.word);
-
-				/* the return_value can sometimes be the accumulator */
-				/* which means that we'll be moving rax to rax, which is just unnecessary */
-				if (accumulator != return_value) {
-					state.textsect.push_str(&format!("\tmov {accumulator}, {return_value}\n"));
-				}
-			}
-			/* -------------------------- */
-			/*          block end         */
-			/* -------------------------- */
-			ScopeEnd => {
+				/* returning from the function and releasing stack frame shit */
 				if (state.current_function.calls_funcs && state.current_function.stacksize != 0) {
 					state.textsect.push_str("\tleave\n");
 				}
@@ -374,16 +318,54 @@ pub fn generate(state: State, input: &[AstType]) -> Result<(String, String, i64)
 				/* we want to subtract the value of stackspace from rsp if we call other functions */
 				/* and if the aren't any local variables in the current function */
 				if (state.current_function.calls_funcs && state.current_function.stacksize != 0) {
-					state.textsect.insert_str(state.current_function.stack_subtraction_index, &format!("\tsub rsp, {}\n", state.current_function.stacksize));
+					state.textsect.insert_str(stack_subtraction_index, &format!("\tsub rsp, {}\n", state.current_function.stacksize));
 				}
 
 				state.textsect.push_str("\tret\n\n");
 				state.current_function = CurrentFunctionState::default();
 			},
+			/* --------------------------- */
+			/*     function prototypes     */
+			/* --------------------------- */
+			FunctionPrototype(name, args, return_type) => {
+				state.textsect.push_str(&format!("extern {name}\n"));
+
+				let return_type = match return_type {
+					Some(x) => Some(DataType::new(x, state.line)?),
+					None => None,
+				};
+
+				state.functions.insert(name.to_string(), Function { arg_types: args.to_vec(), return_type });
+			}
+			/* -------------------------- */
+			/*      function calling      */
+			/* -------------------------- */
+			FunctionCall(name, args) => {
+				call_function(state, name, args)?;
+				state.textsect.push('\n');
+			},
+			/* ------------------------ */
+			/*    function returning    */
+			/* ------------------------ */
+			ReturnStatement(expr) => {
+				let return_type = match state.current_function.return_type {
+					Some(ref x) => x.clone(),
+					None => return Err((String::from("attempted to return from function that does not return anything, did you forget to specify the return type in the signature?"), state.line))
+				};
+
+				let return_value = eval_expression(state, expr, &return_type)?;
+				let accumulator = get_accumulator(&return_type.word);
+
+				/* the return_value can sometimes be the accumulator */
+				/* which means that we'll be moving rax to rax, which is just unnecessary */
+				if (accumulator != return_value) {
+					state.textsect.push_str(&format!("\tmov {accumulator}, {return_value}\n"));
+				}
+			}
 			/* ----------------------- */
 			/*      if statements      */
 			/* ----------------------- */
-			IfStatement(expr1, operator, expr2, block_statement) => {
+			IfStatement(expr1, operator, expr2, body) => {
 				let expr_type = match &expr1[0] {
 					TokenType::Identifier(x) => {
 						match state.current_function.local_variables.get(x) {
@@ -397,8 +379,8 @@ pub fn generate(state: State, input: &[AstType]) -> Result<(String, String, i64)
 					err => return Err((format!("expected an identifier, int literal, or string literal as the first element of if statement, but got {err} instead"), state.line))
 				};
 
-				let value = eval_expression(&mut state, expr1, &expr_type)?;
-				let value2 = eval_expression(&mut state, expr2, &expr_type)?;
+				let value = eval_expression(state, expr1, &expr_type)?;
+				let value2 = eval_expression(state, expr2, &expr_type)?;
 
 				let accumulator = get_accumulator(&expr_type.word);
 
@@ -420,7 +402,7 @@ pub fn generate(state: State, input: &[AstType]) -> Result<(String, String, i64)
 				};
 
 				state.textsect.push_str(&format!("\t{jump_instruction} .L{}\n", state.labels));
-				execute_block_statement(&mut state, block_statement);			
+				generate(state, body)?;
 				state.textsect.push_str(&format!(".L{}:\n", state.labels));
 				
 				state.labels += 1;
@@ -432,8 +414,8 @@ pub fn generate(state: State, input: &[AstType]) -> Result<(String, String, i64)
 				/* now we evaluate expression */
 				let vartype = DataType::new(vartype, state.line)?;
 
-				let value = eval_expression(&mut state, initexpr, &vartype)?;
-				add_variable(&mut state, name, &vartype, Some(&value))?;
+				let value = eval_expression(state, initexpr, &vartype)?;
+				add_variable(state, name, &vartype, Some(&value))?;
 
 				state.textsect.push('\n');
 			},
@@ -488,5 +470,5 @@ pub fn generate(state: State, input: &[AstType]) -> Result<(String, String, i64)
 		}
 	}
 
-	Ok((state.datasect, state.textsect, state.line))
+	Ok(())
 }

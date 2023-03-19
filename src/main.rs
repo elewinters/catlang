@@ -75,21 +75,21 @@ fn main() {
 		println!("------------------------");
 		println!("  abstract syntax tree  ");
 		println!("------------------------");
-		parser::print_ast(&ast);
+		parser::print_ast(&ast, 0);
+		println!();
 	}
 
 	/* -------------------------------------------- */
 	/*  parse AST and generate the assembly output  */
 	/* -------------------------------------------- */
-	let default_state = code_generation::State::default();
-	let assembly_output = match code_generation::generate(default_state, &ast) {
-		Ok(mut x) => {
-			x.0.insert_str(0, "section .data\n");
-			x.1.insert_str(0, "section .text\n\n");
-			x.0 + &x.1
-		},
-		Err((err, line)) => exit!(format!("[line {}] {}", (line+1), err))
+	let mut state = code_generation::State::default();
+	if let Err((err, line)) = code_generation::generate(&mut state, &ast) {
+		exit!(format!("[line {}] {}", (line+1), err))
 	};
+
+	state.datasect.insert_str(0, "section .data\n");
+	state.textsect.insert_str(0, "section .text\n\n");
+	let assembly_output = state.datasect + &state.textsect;
 
 	/* --------------------------------- */
 	/*  write assembly output to a file  */

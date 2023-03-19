@@ -6,13 +6,13 @@ pub type BlockStatement = Vec<AstType>;
 
 #[derive(Debug)]
 pub enum AstType {
-	/* function name, tuple of vectors, first vector holds names, second one holds types, return type */
-	FunctionDefinition(String, (Vec<String>, Vec<String>), Option<String>),
+	/* function name, tuple of vectors, first vector holds names, second one holds types, return type, body */
+	FunctionDefinition(String, (Vec<String>, Vec<String>), Option<String>, BlockStatement),
 	/* function name, vector of types that the function accepts, return type */
 	FunctionPrototype(String, Vec<String>, Option<String>),
 	/* expression */
 	ReturnStatement(Expression),
-	/* first expression, operator, second expression */
+	/* first expression, operator, second expression, body */
 	IfStatement(Expression, ComparisonOperator, Expression, BlockStatement),
 	/* variable name, type, and initializer value */
 	VariableDefinition(String, String, Expression),
@@ -20,8 +20,6 @@ pub enum AstType {
 	MacroCall(String, Vec<Expression>),
 	/* function name, arguments */
 	FunctionCall(String, Vec<Expression>),
-	/* this is so that functions know when they end */
-	ScopeEnd,
 	/* for counting the line number in parser.rs */
 	Newline
 }
@@ -36,44 +34,32 @@ pub enum ComparisonOperator {
 	LessThanEqual // <= 
 }
 
-pub fn print_ast(ast: &[AstType]) {
-	let mut indent_level = 0;
-
-	fn print_tabs(indent_level: &mut i32) {
-		for _ in 0..*indent_level {
+pub fn print_ast(ast: &[AstType], indent_levels: u64) {
+	for i in ast {
+		for _ in 0..indent_levels {
 			print!("\t");
 		}
-	}
 
-	for i in ast {
 		match (i) {
-			AstType::FunctionDefinition(name, (arg_names, arg_types), return_type) => {
+			AstType::FunctionDefinition(name, (arg_names, arg_types), return_type, body) => {
 				print!("FunctionDefintion(name: {name}, arg_names: {:?}, arg_types: {:?}, return_type: {:?}) {{", arg_names, arg_types, return_type);
-				indent_level += 1;
-			}
+				print_ast(body, 1);
 
-			AstType::IfStatement(_, _, _, _) => {
-				print_tabs(&mut indent_level);
+				print!("}}");			}
+
+			AstType::IfStatement(_, _, _, body) => {
 				print!("{:?} {{", i);
-				
-				indent_level += 1;
+				print_ast(body, 2);
+
+				print!("\t}}");
 			}
 
 			AstType::Newline => println!(),
-			AstType::ScopeEnd => {
-				indent_level -= 1;
-
-				print_tabs(&mut indent_level);
-				print!("}}");
-			}
 			_ => {
-				print_tabs(&mut indent_level);
 				print!("{:?} ", i);
 			}
 		}
 	}
-
-	println!();
 }
 
 /* all this function does is start from the iterator provided and keep adding every token it sees to a vector until it hits ; */
@@ -94,10 +80,24 @@ fn seperate_expression(iter: &mut core::slice::Iter<TokenType>, terminator: char
 
 fn seperate_block_statement(iter: &mut core::slice::Iter<TokenType>, line: i64) -> BlockStatement {
 	let mut block_statement_tokens = Vec::new();
+	let mut scopes: u64 = 1; /* if this is initialized to 0 we will overflow */
 
 	for i in iter.by_ref() {
 		match i {
-			Operator('}') => break,
+			Operator('{') => {
+				block_statement_tokens.push(i.clone());
+				scopes += 1
+			},
+			Operator('}') => {
+				scopes -= 1;
+				if (scopes == 0) {
+					break;
+				}
+				else {
+					block_statement_tokens.push(i.clone());
+				}
+
+			},
 			_ => block_statement_tokens.push(i.clone())
 		}
 	}
@@ -173,8 +173,6 @@ pub fn parse(input: Vec<TokenType>) -> Result<Vec<AstType>, (String, i64)> {
 				line += 1;
 				ast.push(AstType::Newline);
 			},
-			/* scope end */
-			Operator('}') => ast.push(AstType::ScopeEnd),
 			/* ------------------------------------- */
 			/*    function definitions/prototypes    */
 			/* ------------------------------------- */
@@ -255,13 +253,16 @@ pub fn parse(input: Vec<TokenType>) -> Result<Vec<AstType>, (String, i64)> {
 					Some(Operator(';')) | Some(Newline) => is_proto = true,
 					_ => return Err((format!("expected either '{{', '->', ';' or a newline after the paramater list of '{function_name}'"), line))
 				}
-				
-				if (!is_proto) {
-					ast.push(AstType::FunctionDefinition(function_name.to_owned(), (arg_names, arg_types), return_type));
-				}
-				else {
+
+				if (is_proto) {
 					ast.push(AstType::FunctionPrototype(function_name.to_owned(), arg_types, return_type));
+					continue;
 				}
+				
+				let block_statement = seperate_block_statement(&mut iter, line);
+				println!("block statement of {}: {:?}", function_name, block_statement);
+				
+				ast.push(AstType::FunctionDefinition(function_name.to_owned(), (arg_names, arg_types), return_type, block_statement));
 			},
 			/* ------------------------ */
 			/*    function returning    */
