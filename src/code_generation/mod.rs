@@ -6,12 +6,13 @@ use registers::*;
 use crate::parser::AstType::{self, *};
 use crate::lexer::TokenType::{self, *};
 
-use crate::parser::{process_function_parameters, Expression, ComparisonOperator};
+use crate::parser::{process_function_parameters, Expression, ComparisonOperator, BlockStatement};
+use crate::exit;
 
 macro_rules! warn {
 	($fmt:expr, $line:expr) => {
 		{
-			println!("[line {}] {}", $line, String::from("catlang: \x1b[33mwarning:\x1b[0m ") + &$fmt);
+			println!("[line {}] {}", ($line + 1), String::from("catlang: \x1b[33mwarning:\x1b[0m ") + &$fmt);
 		}
 	}
 }
@@ -36,6 +37,7 @@ impl DataType {
 	}
 }
 
+#[derive(Clone)]
 struct Variable {
 	addr: String,
 	vartype: DataType
@@ -50,7 +52,7 @@ struct Function<'a> {
 /* this contains all of the state of the current function we're working with */
 /* stuff like local variables, the size of the stack, etc */
 /* this will always be mutable, and there will always only be one instance of it */
-#[derive(Default)]
+#[derive(Default, Clone)]
 struct CurrentFunctionState {
 	local_variables: HashMap<String, Variable>,
 	return_type: Option<DataType>,
@@ -64,8 +66,8 @@ struct CurrentFunctionState {
 /* theres only ever one instance of this and its always mutable */
 /* the reason why these arent just regular mut variables in the generate() function is because passing all of them to functions is a fucking pain */
 /* so i turned them into a struct!! this is the cleanest way to do this i promise */
-#[derive(Default)]
-struct State<'a> {
+#[derive(Default, Clone)]
+pub struct State<'a> {
 	line: i64,
 
 	datasect: String,
@@ -75,7 +77,6 @@ struct State<'a> {
 	current_function: CurrentFunctionState,
 
 	labels: i64,
-	in_if_statement: bool,
 }
 
 /* given a string, this function will insert that string into the datasection */
@@ -91,6 +92,21 @@ fn resolve_string_literal(datasect: &mut String, literal: &str) -> String {
 
 		format!("L{}", LITERALS_AMOUNT - 1)
 	}
+}
+
+fn execute_block_statement(state: &mut State, block_statement: &BlockStatement) {
+	let mut state_copy = state.clone();
+	state_copy.datasect.clear();
+	state_copy.textsect.clear();
+
+	match generate(state_copy, block_statement) {
+		Ok(x) => {
+			state.datasect.push_str(&x.0);
+			state.textsect.push_str(&x.1);
+			state.line += (x.2 - state.line);
+		},
+		Err((err, line)) => exit!(format!("in if statement at [line {}]\n[line {}] {}", (state.line + 1), ((line - state.line) + state.line + 1), err))
+	};
 }
 
 /* evaluates an expression (aka a list of tokens) and returns the result where its stored at (or just its literal value if no operations were done on it) */
@@ -270,16 +286,10 @@ fn call_function(state: &mut State, name: &str, args: &Vec<Expression>) -> Resul
 	Ok(())
 }
 
-/* returns the assembly output on success, returns a string containing error information on failure */
-pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
+/* returns the (datasect, textsect, and how many lines it parsed) on success, returns a string containing error information on failure */
+pub fn generate(state: State, input: &[AstType]) -> Result<(String, String, i64), (String, i64)> {
 	let iter = input.iter();
-
-	let mut state = State {
-		line: 1,
-		datasect: String::from("section .data\n"),
-		textsect: String::from("section .text\n\n"),
-		..State::default()
-	};
+	let mut state = state;
 
 	for i in iter {
 		match i {
@@ -352,35 +362,28 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 			/*          block end         */
 			/* -------------------------- */
 			ScopeEnd => {
-				if (!state.in_if_statement) {
-					if (state.current_function.calls_funcs && state.current_function.stacksize != 0) {
-						state.textsect.push_str("\tleave\n");
-					}
-					else {
-						state.textsect.push_str("\tpop rbp\n");
-					}
-
-					state.textsect.push_str("\tpop rbx\n");
-					
-					/* we want to subtract the value of stackspace from rsp if we call other functions */
-					/* and if the aren't any local variables in the current function */
-					if (state.current_function.calls_funcs && state.current_function.stacksize != 0) {
-						state.textsect.insert_str(state.current_function.stack_subtraction_index, &format!("\tsub rsp, {}\n", state.current_function.stacksize));
-					}
-	
-					state.textsect.push_str("\tret\n\n");
-					state.current_function = CurrentFunctionState::default();
+				if (state.current_function.calls_funcs && state.current_function.stacksize != 0) {
+					state.textsect.push_str("\tleave\n");
 				}
 				else {
-					state.textsect.push_str(&format!(".L{}:\n", state.labels));
-					state.labels += 1;
-					state.in_if_statement = false;
+					state.textsect.push_str("\tpop rbp\n");
 				}
+
+				state.textsect.push_str("\tpop rbx\n");
+				
+				/* we want to subtract the value of stackspace from rsp if we call other functions */
+				/* and if the aren't any local variables in the current function */
+				if (state.current_function.calls_funcs && state.current_function.stacksize != 0) {
+					state.textsect.insert_str(state.current_function.stack_subtraction_index, &format!("\tsub rsp, {}\n", state.current_function.stacksize));
+				}
+
+				state.textsect.push_str("\tret\n\n");
+				state.current_function = CurrentFunctionState::default();
 			},
 			/* ----------------------- */
 			/*      if statements      */
 			/* ----------------------- */
-			IfStatement(expr1, operator, expr2) => {
+			IfStatement(expr1, operator, expr2, block_statement) => {
 				let expr_type = match &expr1[0] {
 					TokenType::Identifier(x) => {
 						match state.current_function.local_variables.get(x) {
@@ -417,8 +420,10 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 				};
 
 				state.textsect.push_str(&format!("\t{jump_instruction} .L{}\n", state.labels));
+				execute_block_statement(&mut state, block_statement);			
+				state.textsect.push_str(&format!(".L{}:\n", state.labels));
 				
-				state.in_if_statement = true;
+				state.labels += 1;
 			},
 			/* --------------------------- */
 			/*    variable declerations    */
@@ -483,5 +488,5 @@ pub fn generate(input: &[AstType]) -> Result<String, (String, i64)> {
 		}
 	}
 
-	Ok(state.datasect + &state.textsect)
+	Ok((state.datasect, state.textsect, state.line))
 }

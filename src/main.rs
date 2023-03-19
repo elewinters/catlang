@@ -81,9 +81,14 @@ fn main() {
 	/* -------------------------------------------- */
 	/*  parse AST and generate the assembly output  */
 	/* -------------------------------------------- */
-	let assembly_output = match code_generation::generate(&ast) {
-		Ok(x) => x,
-		Err((err, line)) => exit!(format!("[line {line}] {}", err))
+	let default_state = code_generation::State::default();
+	let assembly_output = match code_generation::generate(default_state, &ast) {
+		Ok(mut x) => {
+			x.0.insert_str(0, "section .data\n");
+			x.1.insert_str(0, "section .text\n\n");
+			x.0 + &x.1
+		},
+		Err((err, line)) => exit!(format!("[line {}] {}", (line+1), err))
 	};
 
 	/* --------------------------------- */

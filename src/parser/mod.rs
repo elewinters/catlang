@@ -13,7 +13,7 @@ pub enum AstType {
 	/* expression */
 	ReturnStatement(Expression),
 	/* first expression, operator, second expression */
-	IfStatement(Expression, ComparisonOperator, Expression),
+	IfStatement(Expression, ComparisonOperator, Expression, BlockStatement),
 	/* variable name, type, and initializer value */
 	VariableDefinition(String, String, Expression),
 	/* macro name, arguments */
@@ -52,7 +52,7 @@ pub fn print_ast(ast: &[AstType]) {
 				indent_level += 1;
 			}
 
-			AstType::IfStatement(_, _, _) => {
+			AstType::IfStatement(_, _, _, _) => {
 				print_tabs(&mut indent_level);
 				print!("{:?} {{", i);
 				
@@ -92,7 +92,7 @@ fn seperate_expression(iter: &mut core::slice::Iter<TokenType>, terminator: char
 	expression
 }
 
-fn seperate_block_statement(iter: &mut core::slice::Iter<TokenType>) -> BlockStatement {
+fn seperate_block_statement(iter: &mut core::slice::Iter<TokenType>, line: i64) -> BlockStatement {
 	let mut block_statement_tokens = Vec::new();
 
 	for i in iter.by_ref() {
@@ -105,7 +105,7 @@ fn seperate_block_statement(iter: &mut core::slice::Iter<TokenType>) -> BlockSta
 	/* we return here if we parsed the tokens successfully */
 	match parse(block_statement_tokens) {
 		Ok(x) => x,
-		Err((err, line)) => exit!(format!("[line {line}] {}", err))
+		Err((err, errline)) => exit!(format!("[line {}] {}", (line+1)+(errline+1)+2, err))
 	}
 }
 
@@ -343,6 +343,7 @@ pub fn parse(input: Vec<TokenType>) -> Result<Vec<AstType>, (String, i64)> {
 				};
 
 				let mut expr2 = seperate_expression(&mut iter, '{');
+				let block_statement = seperate_block_statement(&mut iter, line);
 
 				/* the last element of the expression will be ), which we do not want so we get rid of it */
 				match expr2.last() {
@@ -352,7 +353,7 @@ pub fn parse(input: Vec<TokenType>) -> Result<Vec<AstType>, (String, i64)> {
 					_ => return Err((String::from("expected ')' before '{{' in if statement"), line))
 				};
 
-				ast.push(AstType::IfStatement(expr1, operator, expr2));
+				ast.push(AstType::IfStatement(expr1, operator, expr2, block_statement));
 			}
 			/* --------------------------- */
 			/*    variable declerations    */
