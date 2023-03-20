@@ -269,6 +269,37 @@ fn call_function(state: &mut State, name: &str, args: &Vec<Expression>) -> Resul
 	Ok(())
 }
 
+/* infers a type from an expression */
+fn infer_type(state: &mut State, expr: &Expression) -> Result<DataType, (String, i64)> {
+	let mut iter = expr.iter();
+	match iter.next() {
+		Some(TokenType::Identifier(identifier)) => {
+			/* function calls */
+			if let Some(Operator('(')) = iter.next() {
+				match state.functions.get(identifier) {
+					Some(x) => match &x.return_type {
+						Some(x) => Ok(x.clone()), /* we return here */
+						None => return Err((format!("attempted to use return value of function '{identifier}' in expression but it does not return anything"), state.line))
+					},
+					None => return Err((format!("attempted to call function '{identifier}' in expression but it is not defined in the current scope"), state.line))
+				}
+			}
+			/* variables */
+			else {
+				match state.current_function.local_variables.get(identifier) {
+					Some(x) => Ok(x.vartype.clone()),
+					None => return Err((format!("attempted to use variable '{identifier}' in expression but it is not defined in the current scope"), state.line))
+				}
+			}
+		}
+		Some(TokenType::IntLiteral(_)) => DataType::new("i32", state.line),
+		Some(TokenType::StringLiteral(_)) => DataType::new("i64", state.line),
+		
+		Some(err) => return Err((format!("expected an identifier, int literal, or string literal as the first element of expression, but got {err} instead"), state.line)),
+		None => return Err((format!("expected an identifier, int literal, or string literal as the first element of expression, but got nothing"), state.line))
+	}
+}
+
 /* returns the state of the program on success, returns a string containing error information on failure */
 pub fn generate(state: &mut State, input: &[AstType]) -> Result<(), (String, i64)> {
 	let iter = input.iter();
@@ -365,18 +396,7 @@ pub fn generate(state: &mut State, input: &[AstType]) -> Result<(), (String, i64
 			/*      if statements      */
 			/* ----------------------- */
 			IfStatement(expr1, operator, expr2, body) => {
-				let expr_type = match &expr1[0] {
-					TokenType::Identifier(x) => {
-						match state.current_function.local_variables.get(x) {
-							Some(x) => x.vartype.clone(),
-							None => return Err((format!("undefined variable '{x}' in if statement"), state.line))
-						}
-					}
-					TokenType::IntLiteral(_) => DataType::new("i32", state.line)?,
-					TokenType::StringLiteral(_) => DataType::new("i64", state.line)?,
-					
-					err => return Err((format!("expected an identifier, int literal, or string literal as the first element of if statement, but got {err} instead"), state.line))
-				};
+				let expr_type = infer_type(state, expr1)?;
 
 				let value = eval_expression(state, expr1, &expr_type)?;
 				let value2 = eval_expression(state, expr2, &expr_type)?;
