@@ -312,9 +312,10 @@ pub fn generate(state: &mut State, input: &[AstType]) -> Result<(), (String, i64
 			/* ---------------------------- */
 			FunctionDefinition(name, args, return_type, body) => {
 				state.textsect.push_str(&format!("global {name}\n{name}:\n"));
-				state.textsect.push_str("\tpush rbx\n");
-				state.textsect.push_str("\tpush rbp\n\tmov rbp, rsp\n\n");
-				
+				state.textsect.push_str("\tpush rbp\n");
+				state.textsect.push_str("\tmov rbp, rsp\n\n");
+				state.textsect.push_str("\tpush rbx\n\n");
+
 				let stack_subtraction_index = state.textsect.len() - 1;
 
 				/* add arguments to the stack */
@@ -335,6 +336,9 @@ pub fn generate(state: &mut State, input: &[AstType]) -> Result<(), (String, i64
 
 				/* parse and append the body of the funnction */
 				generate(state, body)?;
+				
+				/* restore rbx */
+				state.textsect.push_str("\tmov rbx, [rbp-8]\n");
 
 				/* returning from the function and releasing stack frame shit */
 				if (state.current_function.calls_funcs && state.current_function.stacksize != 0) {
@@ -343,13 +347,14 @@ pub fn generate(state: &mut State, input: &[AstType]) -> Result<(), (String, i64
 				else {
 					state.textsect.push_str("\tpop rbp\n");
 				}
-
-				state.textsect.push_str("\tpop rbx\n");
 				
 				/* we want to subtract the value of stackspace from rsp if we call other functions */
 				/* and if the aren't any local variables in the current function */
 				if (state.current_function.calls_funcs && state.current_function.stacksize != 0) {
 					state.textsect.insert_str(stack_subtraction_index, &format!("\tsub rsp, {}\n", state.current_function.stacksize));
+				}
+				else {
+					state.textsect.insert_str(stack_subtraction_index, "\tsub rsp, 24\n");
 				}
 
 				state.textsect.push_str("\tret\n\n");
