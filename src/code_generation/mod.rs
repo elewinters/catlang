@@ -439,8 +439,6 @@ pub fn generate(state: &mut State, input: &[AstType]) -> Result<(), (String, i64
 
 				let value = eval_expression(state, initexpr, &vartype)?;
 				add_variable(state, name, &vartype, Some(&value))?;
-
-				state.textsect.push('\n');
 			},
 			/* -------------------------- */
 			/*           macros           */

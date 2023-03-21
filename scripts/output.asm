@@ -1,5 +1,11 @@
 section .data
-	L0: db `exiting...`, 0
+	L0: db `not enough arguments`, 0
+	L1: db `hi`, 0
+	L2: db `hi`, 0
+	L3: db `condition is true`, 0
+	L4: db `condition is false`, 0
+	L5: db `%d\n`, 0
+	L6: db `exiting...`, 0
 section .text
 
 extern puts
@@ -88,23 +94,73 @@ main:
 	push rbp
 	mov rbp, rsp
 	push rbx
-	sub rsp, 40
+	sub rsp, 24
 
-	mov dword [rbp-4], 5
-
-	mov dword [rbp-8], 5
-
-	mov dword [rbp-12], 5
-
-	mov dword [rbp-16], 5
-
-	mov dword [rbp-20], 5
-
-	mov dword [rbp-24], 5
-
-	mov dword [rbp-28], 5
-
+	mov dword [rbp-4], edi
+	mov eax, dword [rbp-4]
+	cmp eax, 1
+	jne .L0
 	mov rdi, L0
+	call puts
+
+	mov edi, 1
+	call exit
+
+.L0:
+	mov rdi, L1
+	mov rsi, L2
+	call strcmp
+
+	mov dword [rbp-8], eax
+
+	mov eax, dword [rbp-8]
+	cmp eax, 0
+	jne .L1
+	mov rdi, L3
+	call puts
+
+.L1:
+	mov eax, dword [rbp-8]
+	cmp eax, 0
+	je .L2
+	mov rdi, L4
+	call puts
+
+.L2:
+	mov edi, 5
+	mov esi, 5
+	call sum
+
+	mov ebx, eax
+	mov edi, 5
+	mov esi, 5
+	call sum
+
+	add ebx, eax
+	mov edi, 5
+	mov esi, 5
+	call sum
+
+	add ebx, eax
+	mov edi, 5
+	mov esi, 5
+	call sum
+
+	add ebx, eax
+	xor rax, rax
+	cdq
+	mov eax, dword ebx
+	mov r11d, 2
+	idiv r11d
+	mov ebx, eax
+	mov dword [rbp-12], ebx
+
+	xor rax, rax
+	mov rdi, L5
+	mov esi, [rbp-12]
+	call printf
+
+	mov rdi, L6
 	call puts
 
 	mov eax, 0
