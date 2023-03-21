@@ -437,7 +437,11 @@ pub fn generate(state: &mut State, input: &[AstType]) -> Result<(), (String, i64
 			/* --------------------------- */
 			VariableDefinition(name, vartype, initexpr) => {
 				/* now we evaluate expression */
-				let vartype = DataType::new(vartype, state.line)?;
+				let vartype = match vartype {
+					Some(x) => DataType::new(x, state.line)?,
+					None => infer_type(state, initexpr)?
+				};
+				println!("variable {name} is of type {}", vartype.string);
 
 				let value = eval_expression(state, initexpr, &vartype)?;
 				add_variable(state, name, &vartype, Some(&value))?;

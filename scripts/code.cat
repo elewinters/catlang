@@ -36,7 +36,7 @@ fn main(argc: i32) -> i32 {
 		exit(1);
 	}
 
-	let ret: i32 = strcmp("hi", "hi");
+	let ret = strcmp("hi", "hi");
 	if (ret == 0) {
 		puts("condition is true");
 	}
@@ -45,7 +45,7 @@ fn main(argc: i32) -> i32 {
 		puts("condition is false");
 	}
 
-	let num: i32 = sum(5, 5) + sum(5, 5) + sum(5, 5) + sum(5, 5) / 2;
+	let num = sum(5, 5) + sum(5, 5) + sum(5, 5) + sum(5, 5) / 2;
 	asm!("xor rax, rax");
 	printf("%d\n", num);
 

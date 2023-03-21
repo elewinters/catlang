@@ -15,7 +15,7 @@ pub enum AstType {
 	/* first expression, operator, second expression, body */
 	IfStatement(Expression, ComparisonOperator, Expression, BlockStatement),
 	/* variable name, type, and initializer value */
-	VariableDefinition(String, String, Expression),
+	VariableDefinition(String, Option<String>, Expression),
 	/* macro name, arguments */
 	MacroCall(String, Vec<Expression>),
 	/* function name, arguments */
@@ -369,7 +369,14 @@ pub fn parse(input: Vec<TokenType>) -> Result<Vec<AstType>, (String, i64)> {
 				/* check if there's a colon after variable name */
 				match iter.next() {
 					Some(Operator(':')) => (),
-					_ => return Err(("expected operator ':' token after the variable name".to_owned(), line))
+					/* if theres a = instead of a : that means we should type infer this */
+					Some(Operator('=')) => {
+						let initexpr = seperate_expression(&mut iter, ';');
+						ast.push(AstType::VariableDefinition(variable_name.to_owned(), None, initexpr));
+
+						continue;
+					}
+					_ => return Err(("expected operator ':' or operator '=' after the variable name".to_owned(), line))
 				};
 				
 				/* get variable type */
@@ -388,7 +395,7 @@ pub fn parse(input: Vec<TokenType>) -> Result<Vec<AstType>, (String, i64)> {
 				let initexpr = seperate_expression(&mut iter, ';');
 
 				/* push everything to the AST */
-				ast.push(AstType::VariableDefinition(variable_name.to_owned(), variable_type.to_owned(), initexpr));
+				ast.push(AstType::VariableDefinition(variable_name.to_owned(), Some(variable_type.to_owned()), initexpr));
 			}
 			/* ---------------------------- */
 			/*    function/macro calling    */
