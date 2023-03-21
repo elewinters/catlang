@@ -424,11 +424,13 @@ pub fn generate(state: &mut State, input: &[AstType]) -> Result<(), (String, i64
 					ComparisonOperator::LessThanEqual => "jg",
 				};
 
+				let old_labels = state.labels;
+
+				state.labels += 1;
 				state.textsect.push_str(&format!("\t{jump_instruction} .L{}\n", state.labels));
 				generate(state, body)?;
-				state.textsect.push_str(&format!(".L{}:\n", state.labels));
 				
-				state.labels += 1;
+				state.textsect.push_str(&format!(".L{}:\n", old_labels+1));
 			},
 			/* --------------------------- */
 			/*    variable declerations    */

@@ -99,34 +99,33 @@ main:
 	mov dword [rbp-4], edi
 	mov eax, dword [rbp-4]
 	cmp eax, 1
-	jne .L0
+	jne .L1
 	mov rdi, L0
 	call puts
 
 	mov edi, 1
 	call exit
 
-.L0:
+.L1:
 	mov rdi, L1
 	mov rsi, L2
 	call strcmp
 
 	mov dword [rbp-8], eax
-
 	mov eax, dword [rbp-8]
 	cmp eax, 0
-	jne .L1
+	jne .L2
 	mov rdi, L3
 	call puts
 
-.L1:
+.L2:
 	mov eax, dword [rbp-8]
 	cmp eax, 0
-	je .L2
+	je .L3
 	mov rdi, L4
 	call puts
 
-.L2:
+.L3:
 	mov edi, 5
 	mov esi, 5
 	call sum
@@ -154,7 +153,6 @@ main:
 	idiv r11d
 	mov ebx, eax
 	mov dword [rbp-12], ebx
-
 	xor rax, rax
 	mov rdi, L5
 	mov esi, [rbp-12]
