@@ -23,18 +23,27 @@ macro_rules! exit {
 		rewrite the lexer
 		add a nicer way to print the AST
 
-		NOW:
-			seriously you really need to rewrite the lexer, Now
-			create a DataType struct with fields for wordtype and bytesize, so we dont constantly have to call get_size_of_type
+		add a ArithmeticAssignment ast type which handles arithmetic statements, like "num += 5;"
+		add a VariableAssigment ast type which can assign a value to an already existing variable, like "let num = 5; num = 10;"
 
-			fix nested function calls not fully working as expected
-			make division more versatile
+		add a more versatile macro system that can be used in expressions like a function call
+		this could include a typeof!(variable) macro that returns a string representation of the variable's type
 
-			add control flow (if & match)
-			add arrays
-			add support for variadic functions
+		also expand the asm! macro, and adding the ability to put something like asm!("mov rax, {variable_name}") 
+		which will have have '{variable_name}' be replaced with the address on the stack of that variable
 
-			add loops (while & for)
+		also add multiline string literals and escape sequences in the asm! macro
+
+		make it so that when you create a new variable with 'let' you dont have to specify an initializer value
+
+		add elseifs and else
+
+		make division more versatile
+
+		add arrays
+		add support for variadic functions
+
+		add loops (while & for)
 			
 */
 

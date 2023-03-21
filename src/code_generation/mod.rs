@@ -284,24 +284,24 @@ fn infer_type(state: &mut State, expr: &Expression) -> Result<DataType, (String,
 				match state.functions.get(identifier) {
 					Some(x) => match &x.return_type {
 						Some(x) => Ok(x.clone()), /* we return here */
-						None => return Err((format!("attempted to use return value of function '{identifier}' in expression but it does not return anything"), state.line))
+						None => Err((format!("attempted to use return value of function '{identifier}' in expression but it does not return anything"), state.line))
 					},
-					None => return Err((format!("attempted to call function '{identifier}' in expression but it is not defined in the current scope"), state.line))
+					None => Err((format!("attempted to call function '{identifier}' in expression but it is not defined in the current scope"), state.line))
 				}
 			}
 			/* variables */
 			else {
 				match state.current_function.local_variables.get(identifier) {
 					Some(x) => Ok(x.vartype.clone()),
-					None => return Err((format!("attempted to use variable '{identifier}' in expression but it is not defined in the current scope"), state.line))
+					None => Err((format!("attempted to use variable '{identifier}' in expression but it is not defined in the current scope"), state.line))
 				}
 			}
 		}
 		Some(TokenType::IntLiteral(_)) => DataType::new("i32", state.line),
 		Some(TokenType::StringLiteral(_)) => DataType::new("i64", state.line),
 		
-		Some(err) => return Err((format!("expected an identifier, int literal, or string literal as the first element of expression, but got {err} instead"), state.line)),
-		None => return Err((format!("expected an identifier, int literal, or string literal as the first element of expression, but got nothing"), state.line))
+		Some(err) => Err((format!("expected an identifier, int literal, or string literal as the first element of expression, but got {err} instead"), state.line)),
+		None => Err((String::from("expected an identifier, int literal, or string literal as the first element of expression, but got nothing"), state.line))
 	}
 }
 
