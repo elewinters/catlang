@@ -19,14 +19,15 @@ myputchar:
 	push rbp
 	mov rbp, rsp
 	push rbx
-	sub rsp, 8
+	sub rsp, 24
 
-	mov byte [rbp-1], dil
-	mov dil, [rbp-1]
+	mov byte [rbp-9], dil
+	mov dil, [rbp-9]
 	call putchar
 
 	mov dil, 10
 	call putchar
+
 
 	pop rbx
 	leave
@@ -36,6 +37,8 @@ global abc
 abc:
 	push rbp
 	mov rbp, rsp
+	push rbx
+	sub rsp, 8
 
 	mov dil, 65
 	call putchar
@@ -49,18 +52,23 @@ abc:
 	mov dil, 10
 	call putchar
 
-	pop rbp
+
+	pop rbx
+	leave
 	ret
 
 global div
 div:
 	push rbp
 	mov rbp, rsp
+	push rbx
 
-	mov dword [rbp-4], edi
-	mov dword [rbp-8], esi
+	mov dword [rbp-12], edi
+	mov dword [rbp-16], esi
 	mov eax, edi
 	idiv esi
+
+	pop rbx
 	pop rbp
 	ret
 
@@ -68,12 +76,15 @@ global sum
 sum:
 	push rbp
 	mov rbp, rsp
+	push rbx
 
-	mov dword [rbp-4], edi
-	mov dword [rbp-8], esi
-	mov ebx, [rbp-4]
-	add ebx, [rbp-8]
+	mov dword [rbp-12], edi
+	mov dword [rbp-16], esi
+	mov ebx, [rbp-12]
+	add ebx, [rbp-16]
 	mov eax, ebx
+
+	pop rbx
 	pop rbp
 	ret
 
@@ -81,11 +92,14 @@ global sqr
 sqr:
 	push rbp
 	mov rbp, rsp
+	push rbx
 
-	mov dword [rbp-4], edi
-	mov ebx, [rbp-4]
-	imul ebx, [rbp-4]
+	mov dword [rbp-12], edi
+	mov ebx, [rbp-12]
+	imul ebx, [rbp-12]
 	mov eax, ebx
+
+	pop rbx
 	pop rbp
 	ret
 
@@ -96,8 +110,8 @@ main:
 	push rbx
 	sub rsp, 24
 
-	mov dword [rbp-4], edi
-	mov eax, dword [rbp-4]
+	mov dword [rbp-12], edi
+	mov eax, dword [rbp-12]
 	cmp eax, 1
 	jne .L1
 	mov rdi, L0
@@ -111,15 +125,15 @@ main:
 	mov rsi, L2
 	call strcmp
 
-	mov dword [rbp-8], eax
-	mov eax, dword [rbp-8]
+	mov dword [rbp-16], eax
+	mov eax, dword [rbp-16]
 	cmp eax, 0
 	jne .L2
 	mov rdi, L3
 	call puts
 
 .L2:
-	mov eax, dword [rbp-8]
+	mov eax, dword [rbp-16]
 	cmp eax, 0
 	je .L3
 	mov rdi, L4
@@ -146,22 +160,17 @@ main:
 	call sum
 
 	add ebx, eax
-	xor rax, rax
-	cdq
-	mov eax, dword ebx
-	mov r11d, 2
-	idiv r11d
-	mov ebx, eax
-	mov dword [rbp-12], ebx
+	mov dword [rbp-20], ebx
 	xor rax, rax
 	mov rdi, L5
-	mov esi, [rbp-12]
+	mov esi, [rbp-20]
 	call printf
 
 	mov rdi, L6
 	call puts
 
 	mov eax, 0
+
 	pop rbx
 	leave
 	ret

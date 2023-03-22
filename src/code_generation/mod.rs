@@ -51,7 +51,7 @@ struct Function {
 /* this contains all of the state of the current function we're working with */
 /* stuff like local variables, the size of the stack, etc */
 /* this will always be mutable, and there will always only be one instance of it */
-#[derive(Default, Clone)]
+#[derive(Clone)]
 struct CurrentFunctionState {
 	local_variables: HashMap<String, Variable>,
 	return_type: Option<DataType>,
@@ -59,6 +59,23 @@ struct CurrentFunctionState {
 	stackspace: i32,
 
 	calls_funcs: bool,
+}
+
+impl Default for CurrentFunctionState {
+	fn default() -> Self {
+		Self {
+			local_variables: HashMap::new(),
+			return_type: None,
+			/* stacksize needs to start at 8 because whenever we push rbx, [rbp-8] becomes the location of rbx */
+			/* this is bad because whenever we make a variable we will start at [rbp-4] or [rbp-8] */
+			/* meaning we will overwrite rbx on the stack */
+			/* took me a bit to figure this out */
+			stacksize: 8,
+			stackspace: 0,
+
+			calls_funcs: false
+		}
+	}
 }
 
 /* contains all of the state that this module needs to preserve */
@@ -340,19 +357,21 @@ pub fn generate(state: &mut State, input: &[AstType]) -> Result<(), (String, i64
 
 				/* parse and append the body of the funnction */
 				generate(state, body)?;
-				
-				/* we want to subtract the value of stackspace from rsp if we call other functions */
-				/* and if the aren't any local variables in the current function */
+
+				/* we want to subtract the value of stackspace + 8 (+8 because of rbx) from rsp if we call other functions */
+				/* and if the aren't any local variables/arguments in the current function */
 				if (state.current_function.calls_funcs && state.current_function.stacksize != 0) {
-					/* restore rbx */
-					state.textsect.push_str("\tpop rbx\n");
-					
+					state.textsect.push_str("\n\tpop rbx\n");
+
 					state.textsect.insert_str(stack_subtraction_index, &format!("\tsub rsp, {}\n", state.current_function.stackspace + 8));
 					state.textsect.insert_str(stack_subtraction_index, "\tpush rbx\n");
 
 					state.textsect.push_str("\tleave\n");
 				}
 				else {
+					state.textsect.push_str("\n\tpop rbx\n");
+					state.textsect.insert_str(stack_subtraction_index, "\tpush rbx\n");
+					
 					state.textsect.push_str("\tpop rbp\n");
 				}
 				

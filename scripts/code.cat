@@ -45,7 +45,7 @@ fn main(argc: i32) -> i32 {
 		puts("condition is false");
 	}
 
-	let num = sum(5, 5) + sum(5, 5) + sum(5, 5) + sum(5, 5) / 2;
+	let num = sum(5, 5) + sum(5, 5) + sum(5, 5) + sum(5, 5);
 	asm!("xor rax, rax");
 	printf("%d\n", num);
 
