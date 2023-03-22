@@ -16,24 +16,15 @@ macro_rules! warn {
 	}
 }
 
+/* ------------------------------ */
+/*           structures           */
+/* ------------------------------ */
+
 #[derive(Clone, PartialEq)]
 struct DataType {
 	string: String, /* i8, i16, i32, i64 */
 	word: WordType,
 	byte_size: i32
-}
-
-impl DataType {
-	fn new(input: &str, line: i64) -> Result<Self, (String, i64)> {
-		Ok(match input {
-			"i8" => Self { string: input.to_owned(), word: WordType::Byte, byte_size: 1 },
-			"i16" => Self { string: input.to_owned(), word: WordType::Word, byte_size: 2 },
-			"i32" => Self { string: input.to_owned(), word: WordType::DoubleWord, byte_size: 4 },
-			"i64" => Self { string: input.to_owned(), word: WordType::QuadWord, byte_size: 8 },
-			
-			_ => return Err((format!("'{input}' is not a valid type"), line)) 
-		})
-	}
 }
 
 #[derive(Clone)]
@@ -61,23 +52,6 @@ struct CurrentFunctionState {
 	calls_funcs: bool,
 }
 
-impl Default for CurrentFunctionState {
-	fn default() -> Self {
-		Self {
-			local_variables: HashMap::new(),
-			return_type: None,
-			/* stacksize needs to start at 8 because whenever we push rbx, [rbp-8] becomes the location of rbx */
-			/* this is bad because whenever we make a variable we will start at [rbp-4] or [rbp-8] */
-			/* meaning we will overwrite rbx on the stack */
-			/* took me a bit to figure this out */
-			stacksize: 8,
-			stackspace: 0,
-
-			calls_funcs: false
-		}
-	}
-}
-
 /* contains all of the state that this module needs to preserve */
 /* theres only ever one instance of this and its always mutable */
 /* the reason why these arent just regular mut variables in the generate() function is because passing all of them to functions is a fucking pain */
@@ -94,6 +68,45 @@ pub struct State {
 
 	labels: i64,
 }
+
+/* ------------------------------- */
+/*      trait implementations      */
+/* ------------------------------- */
+
+impl DataType {
+	fn new(input: &str, line: i64) -> Result<Self, (String, i64)> {
+		Ok(match input {
+			"i8" => Self { string: input.to_owned(), word: WordType::Byte, byte_size: 1 },
+			"i16" => Self { string: input.to_owned(), word: WordType::Word, byte_size: 2 },
+			"i32" => Self { string: input.to_owned(), word: WordType::DoubleWord, byte_size: 4 },
+			"i64" => Self { string: input.to_owned(), word: WordType::QuadWord, byte_size: 8 },
+			
+			_ => return Err((format!("'{input}' is not a valid type"), line)) 
+		})
+	}
+}
+
+impl Default for CurrentFunctionState {
+	fn default() -> Self {
+		Self {
+			local_variables: HashMap::new(),
+			return_type: None,
+			
+			/* stacksize needs to start at 8 because whenever we push rbx, [rbp-8] becomes the location of rbx */
+			/* this is bad because whenever we make a variable we will start at [rbp-4] or [rbp-8] */
+			/* meaning we will overwrite rbx on the stack */
+			/* took me a bit to figure this out */
+			stacksize: 8,
+			stackspace: 0,
+
+			calls_funcs: false
+		}
+	}
+}
+
+/* -------------------------------- */
+/*           module logic           */
+/* -------------------------------- */
 
 /* given a string, this function will insert that string into the datasection */
 /* and return the identifier for it (like L0, L1, etc...) */
