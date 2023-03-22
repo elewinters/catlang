@@ -15,7 +15,7 @@ pub enum AstType {
 	/* first expression, operator, second expression, body */
 	IfStatement(Expression, ComparisonOperator, Expression, BlockStatement),
 	/* variable name, type, and initializer value */
-	VariableDefinition(String, Option<String>, Expression),
+	VariableDefinition(String, Option<String>, Option<Expression>),
 	/* assigning a value to an already existing variable, like 'num = 5' */
 	/* variable name, assignment expression */
 	VariableAssigment(String, Expression),
@@ -375,7 +375,7 @@ pub fn parse(input: Vec<TokenType>) -> Result<Vec<AstType>, (String, i64)> {
 					/* if theres a = instead of a : that means we should type infer this */
 					Some(Operator('=')) => {
 						let initexpr = seperate_expression(&mut iter, ';');
-						ast.push(AstType::VariableDefinition(variable_name.to_owned(), None, initexpr));
+						ast.push(AstType::VariableDefinition(variable_name.to_owned(), None, Some(initexpr)));
 
 						continue;
 					}
@@ -391,14 +391,18 @@ pub fn parse(input: Vec<TokenType>) -> Result<Vec<AstType>, (String, i64)> {
 				/* check if there's a = after the type name */
 				match iter.next() {
 					Some(Operator('=')) => (),
-					_ => return Err(("expected operator '=' after type name".to_owned(), line))
+					Some(Operator(';') | Newline) => {
+						ast.push(AstType::VariableDefinition(variable_name.to_owned(), Some(variable_type.to_owned()), None));
+						continue;
+					}
+					_ => return Err(("expected operator '=', operator ';' or newline after type name".to_owned(), line))
 				};
 
 				/* get initializer value */
 				let initexpr = seperate_expression(&mut iter, ';');
 
 				/* push everything to the AST */
-				ast.push(AstType::VariableDefinition(variable_name.to_owned(), Some(variable_type.to_owned()), initexpr));
+				ast.push(AstType::VariableDefinition(variable_name.to_owned(), Some(variable_type.to_owned()), Some(initexpr)));
 			}
 			/* -------------------------------------------------- */
 			/*    function/macro calling + variable assignment    */

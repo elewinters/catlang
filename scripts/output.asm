@@ -167,12 +167,10 @@ main:
 	mov esi, [rbp-20]
 	call printf
 
-	mov ebx, [rbp-20]
-	add ebx, 10
-	mov [rbp-20], dword ebx
+	mov [rbp-24], dword 5
 	xor rax, rax
 	mov rdi, L6
-	mov esi, [rbp-20]
+	mov esi, [rbp-24]
 	call printf
 
 	mov rdi, L7
