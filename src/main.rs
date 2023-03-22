@@ -21,7 +21,6 @@ macro_rules! exit {
 /* 
 	TODO:
 		rewrite the lexer
-		add a nicer way to print the AST
 
 		add a more versatile macro system that can be used in expressions like a function call
 		this could include a typeof!(variable) macro that returns a string representation of the variable's type
