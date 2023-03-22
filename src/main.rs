@@ -23,9 +23,6 @@ macro_rules! exit {
 		rewrite the lexer
 		add a nicer way to print the AST
 
-		add a ArithmeticAssignment ast type which handles arithmetic statements, like "num += 5;"
-		add a VariableAssigment ast type which can assign a value to an already existing variable, like "let num = 5; num = 10;"
-
 		add a more versatile macro system that can be used in expressions like a function call
 		this could include a typeof!(variable) macro that returns a string representation of the variable's type
 
@@ -37,8 +34,6 @@ macro_rules! exit {
 		make it so that when you create a new variable with 'let' you dont have to specify an initializer value
 
 		add elseifs and else
-
-		make division more versatile
 
 		add arrays
 		add support for variadic functions

@@ -20,5 +20,5 @@ run: build
 runb: build
 	$(OUT_DIR)/$(NAME) scripts/code.cat -V -b -o scripts/output && scripts/output
 
-runc: build
+runc: run build
 	$(OUT_DIR)/$(NAME) scripts/code.cat -V -lc -b -o scripts/output && scripts/output

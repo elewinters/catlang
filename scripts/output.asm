@@ -168,7 +168,7 @@ main:
 	call printf
 
 	mov ebx, [rbp-20]
-	add ebx, 5
+	add ebx, 10
 	mov [rbp-20], dword ebx
 	xor rax, rax
 	mov rdi, L6
