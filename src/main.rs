@@ -6,7 +6,7 @@ use std::process::Command;
 mod options;
 mod lexer;
 mod parser;
-mod code_generation;
+mod codegen;
 
 #[macro_export]
 macro_rules! exit {
@@ -91,8 +91,8 @@ fn main() {
 	/* -------------------------------------------- */
 	/*  parse AST and generate the assembly output  */
 	/* -------------------------------------------- */
-	let mut state = code_generation::State::default();
-	if let Err((err, line)) = code_generation::generate(&mut state, &ast) {
+	let mut state = codegen::State::default();
+	if let Err((err, line)) = codegen::generate(&mut state, &ast) {
 		exit!(format!("[line {}] {}", (line+1), err))
 	};
 
