@@ -48,6 +48,11 @@ fn main(argc: i32) -> i32 {
 	asm!("xor rax, rax");
 	printf("%d\n", num);
 
+	num = num + 5;
+
+	asm!("xor rax, rax");
+	printf("%d\n", num);
+
 	puts("exiting...");
 	return 0;
 }

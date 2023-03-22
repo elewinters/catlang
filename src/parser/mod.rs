@@ -16,6 +16,9 @@ pub enum AstType {
 	IfStatement(Expression, ComparisonOperator, Expression, BlockStatement),
 	/* variable name, type, and initializer value */
 	VariableDefinition(String, Option<String>, Expression),
+	/* assigning a value to an already existing variable, like 'num = 5' */
+	/* variable name, assignment expression */
+	VariableAssigment(String, Expression),
 	/* macro name, arguments */
 	MacroCall(String, Vec<Expression>),
 	/* function name, arguments */
@@ -397,30 +400,28 @@ pub fn parse(input: Vec<TokenType>) -> Result<Vec<AstType>, (String, i64)> {
 				/* push everything to the AST */
 				ast.push(AstType::VariableDefinition(variable_name.to_owned(), Some(variable_type.to_owned()), initexpr));
 			}
-			/* ---------------------------- */
-			/*    function/macro calling    */
-			/* ---------------------------= */
+			/* -------------------------------------------------- */
+			/*    function/macro calling + variable assignment    */
+			/* -------------------------------------------------- */
 			Identifier(identifier) => {
-				let macro_or_function = if identifier.ends_with('!') {
-					"macro"
-				}
-				else {
-					"function"
-				};
-
-				/* check for ( */
 				match iter.next() {
-					Some(Operator('(')) => (),
-					_ => return Err((format!("expected operator '(' after {macro_or_function} '{identifier}'"), line))
-				}
-				
-				let arguments = process_function_parameters(&mut iter);
+					Some(Operator('(')) => {
+						let arguments = process_function_parameters(&mut iter);
 
-				if (macro_or_function == "macro") {
-					ast.push(AstType::MacroCall(identifier.to_owned(), arguments));
-				}
-				else {
-					ast.push(AstType::FunctionCall(identifier.to_owned(), arguments));
+						if (identifier.ends_with('!')) {
+							ast.push(AstType::MacroCall(identifier.to_owned(), arguments));
+						}
+						else {
+							ast.push(AstType::FunctionCall(identifier.to_owned(), arguments));
+						}
+					},
+					Some(Operator('=')) => {
+						let expr = seperate_expression(&mut iter, ';');
+
+						ast.push(AstType::VariableAssigment(identifier.to_owned(), expr));
+					}
+					Some(x) => return Err((format!("expected either operator '(' or operator '=' after identifier {identifier} but got '{x}'"), line)),
+					None => return Err((format!("expected either operator '(' or operator '=' after identifier {identifier}, but got nothing"), line))
 				}
 			}
 			_ => (),

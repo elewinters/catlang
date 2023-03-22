@@ -5,7 +5,8 @@ section .data
 	L3: db `condition is true`, 0
 	L4: db `condition is false`, 0
 	L5: db `%d\n`, 0
-	L6: db `exiting...`, 0
+	L6: db `%d\n`, 0
+	L7: db `exiting...`, 0
 section .text
 
 extern puts
@@ -147,11 +148,7 @@ main:
 	call puts
 
 .L3:
-	mov edi, 20
-	mov esi, 2
-	call div
-
-	mov ebx, eax
+	mov ebx, 10
 	mov edi, 1
 	mov esi, 1
 	call sum
@@ -163,13 +160,22 @@ main:
 	idiv r11d
 	mov ebx, eax
 
+	add ebx, 5
 	mov dword [rbp-20], ebx
 	xor rax, rax
 	mov rdi, L5
 	mov esi, [rbp-20]
 	call printf
 
+	mov ebx, [rbp-20]
+	add ebx, 5
+	mov [rbp-20], dword ebx
+	xor rax, rax
 	mov rdi, L6
+	mov esi, [rbp-20]
+	call printf
+
+	mov rdi, L7
 	call puts
 
 	mov eax, 0

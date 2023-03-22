@@ -465,6 +465,18 @@ pub fn generate(state: &mut State, input: &[AstType]) -> Result<(), (String, i64
 				let value = eval_expression(state, initexpr, &vartype)?;
 				add_variable(state, name, &vartype, Some(&value))?;
 			},
+			/* -------------------------*/ 
+			/*    variable assignment   */ 
+			/* -------------------------*/ 
+			VariableAssigment(name, expr) => {
+				let variable = match state.current_function.local_variables.get(name).cloned() {
+					Some(x) => x,
+					None => return Err((format!("attempted to assign a value to variable '{name}', but it is not defined in the current scope"), state.line))
+				};
+
+				let value = eval_expression(state, expr, &variable.vartype)?;
+				state.textsect.push_str(&format!("\tmov {}, {} {value}\n", variable.addr, variable.vartype.word));
+			}
 			/* -------------------------- */
 			/*           macros           */
 			/* -------------------------- */
