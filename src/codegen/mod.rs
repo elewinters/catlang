@@ -3,6 +3,8 @@ use std::collections::HashMap;
 mod registers;
 use registers::*;
 
+mod macros;
+
 use crate::parser::AstType::{self, *};
 use crate::lexer::TokenType::{self, *};
 
@@ -326,7 +328,7 @@ fn infer_type(state: &mut State, expr: &Expression) -> Result<DataType, (String,
 pub fn generate(state: &mut State, input: &[AstType]) -> Result<(), (String, i64)> {
 	let iter = input.iter();
 
-	for i in iter {
+	'outer: for i in iter {
 		match i {
 			AstType::Newline => state.line += 1,
 			/* ---------------------------- */
@@ -478,54 +480,19 @@ pub fn generate(state: &mut State, input: &[AstType]) -> Result<(), (String, i64
 				};
 
 				let value = eval_expression(state, expr, &variable.vartype)?;
-				state.textsect.push_str(&format!("\tmov {}, {} {value}\n", variable.addr, variable.vartype.word));
+				state.textsect.push_str(&format!("\tmov {} {}, {value}\n", variable.vartype.word, variable.addr));
 			}
 			/* -------------------------- */
 			/*           macros           */
 			/* -------------------------- */
-			MacroCall(name, args) if name == "asm!" => {
-				let instruction = match &args[0][0] {
-					StringLiteral(ref x) => x,
-					err => return Err((format!("expected token type to be a string literal, not {err}"), state.line))
-				};
-
-				state.textsect.push_str(&format!("\t{}\n", instruction));
-			},
-			MacroCall(name, args) if name == "syscall!" => {
-				for (i, v) in args.iter().enumerate() {
-					let v = match &(v[0]) {
-						IntLiteral(x) => x.to_owned(),
-						StringLiteral(x) => resolve_string_literal(&mut state.datasect, x),
-						Identifier(varname) => { 
-							match state.current_function.local_variables.get(varname) {
-								Some(var) => {
-									if (var.vartype.string != "i64") {
-										return Err((format!("syscall! macro only accepts arguments of type i64, yet type of '{varname}' is {}", var.vartype.string), state.line));
-									}
-									var.addr.clone()
-								}
-								None => return Err((format!("variable '{varname}' is not defined in the current scope"), state.line))
-							}
-						},
-
-						err => return Err((format!("expected either an int literal, string literal or identifier in call to macro syscall!, but got {err}"), state.line))
-					};
-
-					match i {
-						0 => state.textsect.push_str(&format!("\tmov rax, {v}\n")),
-						1 => state.textsect.push_str(&format!("\tmov rdi, {v}\n")),
-						2 => state.textsect.push_str(&format!("\tmov rsi, {v}\n")),
-						3 => state.textsect.push_str(&format!("\tmov rdx, {v}\n")),
-						4 => state.textsect.push_str(&format!("\tmov r10, {v}\n")),
-						5 => state.textsect.push_str(&format!("\tmov r8, {v}\n")),
-						6 => state.textsect.push_str(&format!("\tmov r9, {v}\n")),
-						_ => return Err((String::from("syscall! does not take more than 7 arguments"), state.line))
+			MacroCall(name, args) => {
+				for (macro_name, function) in macros::MACROS {
+					if (macro_name == name) {
+						function(state, args)?;
+						continue 'outer;
 					}
 				}
-				
-				state.textsect.push_str("\tsyscall\n\n");
-			},
-			MacroCall(name, _) => {
+
 				return Err((format!("macro '{}' does not exist", name), state.line));
 			},
 		}

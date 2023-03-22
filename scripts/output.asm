@@ -5,7 +5,7 @@ section .data
 	L3: db `condition is true`, 0
 	L4: db `condition is false`, 0
 	L5: db `%d\n`, 0
-	L6: db `%d\n`, 0
+	L6: db `Hello, world!\n`, 0
 	L7: db `exiting...`, 0
 section .text
 
@@ -116,7 +116,7 @@ main:
 	push rbp
 	mov rbp, rsp
 	push rbx
-	sub rsp, 24
+	sub rsp, 40
 
 	mov dword [rbp-12], edi
 	mov eax, dword [rbp-12]
@@ -167,11 +167,12 @@ main:
 	mov esi, [rbp-20]
 	call printf
 
-	mov [rbp-24], dword 5
-	xor rax, rax
-	mov rdi, L6
-	mov esi, [rbp-24]
-	call printf
+	mov qword [rbp-28], 1
+	mov rax, [rbp-28]
+	mov rdi, [rbp-28]
+	mov rsi, L6
+	mov rdx, 14
+	syscall
 
 	mov rdi, L7
 	call puts
