@@ -8,14 +8,6 @@ use crate::lexer::TokenType::{self, *};
 
 use crate::parser::{process_function_parameters, Expression, ComparisonOperator};
 
-macro_rules! warn {
-	($fmt:expr, $line:expr) => {
-		{
-			println!("[line {}] {}", ($line + 1), String::from("catlang: \x1b[33mwarning:\x1b[0m ") + &$fmt);
-		}
-	}
-}
-
 /* ------------------------------ */
 /*           structures           */
 /* ------------------------------ */
@@ -211,22 +203,17 @@ fn eval_expression(state: &mut State, expr: &Expression, expected_type: &DataTyp
 				state.textsect.push_str(&format!("\timul {root_register}, {val}\n"));
 			}
 			Operator('/') => {
-				warn!("divison is an unstable feature", state.line);
-
 				let accumulator = get_accumulator(&expected_type.word);
 				let r11 = get_r11(&expected_type.word);
 
-				/* this is where we have to place the first value of division operation (accumulator) */
-				state.textsect.push_str("\txor rax, rax\n");
 				/* clear out rdx before division (if we dont do this we will Crash the Fucking Program) */
-				state.textsect.push_str("\tcdq\n");
+				state.textsect.push_str("\n\tcdq\n");
 				
-
-				state.textsect.push_str(&format!("\tmov {accumulator}, {} {root_register}\n", expected_type.word));
 				state.textsect.push_str(&format!("\tmov {r11}, {val}\n"));
+				state.textsect.push_str(&format!("\tmov {accumulator}, {root_register}\n"));
 				state.textsect.push_str(&format!("\tidiv {r11}\n"));
 
-				state.textsect.push_str(&format!("\tmov {root_register}, {accumulator}\n"));
+				state.textsect.push_str(&format!("\tmov {root_register}, {accumulator}\n\n"));
 			}
 
 			err => return Err((format!("unexpected {err} in expression evaluation"), state.line))

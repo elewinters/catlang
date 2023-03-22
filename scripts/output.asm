@@ -65,8 +65,15 @@ div:
 
 	mov dword [rbp-12], edi
 	mov dword [rbp-16], esi
-	mov eax, edi
-	idiv esi
+	mov ebx, [rbp-12]
+
+	cdq
+	mov r11d, [rbp-16]
+	mov eax, ebx
+	idiv r11d
+	mov ebx, eax
+
+	mov eax, ebx
 
 	pop rbx
 	pop rbp
@@ -140,26 +147,22 @@ main:
 	call puts
 
 .L3:
-	mov edi, 5
-	mov esi, 5
-	call sum
+	mov edi, 20
+	mov esi, 2
+	call div
 
 	mov ebx, eax
-	mov edi, 5
-	mov esi, 5
+	mov edi, 1
+	mov esi, 1
 	call sum
 
-	add ebx, eax
-	mov edi, 5
-	mov esi, 5
-	call sum
 
-	add ebx, eax
-	mov edi, 5
-	mov esi, 5
-	call sum
+	cdq
+	mov r11d, eax
+	mov eax, ebx
+	idiv r11d
+	mov ebx, eax
 
-	add ebx, eax
 	mov dword [rbp-20], ebx
 	xor rax, rax
 	mov rdi, L5

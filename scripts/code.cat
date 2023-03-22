@@ -18,8 +18,7 @@ fn abc() {
 }
 
 fn div(x: i32, y: i32) -> i32 {
-	asm!("mov eax, edi");
-	asm!("idiv esi");
+	return x / y;
 }
 
 fn sum(x: i32, y: i32) -> i32 {
@@ -45,7 +44,7 @@ fn main(argc: i32) -> i32 {
 		puts("condition is false");
 	}
 
-	let num = sum(5, 5) + sum(5, 5) + sum(5, 5) + sum(5, 5);
+	let num = 10 / sum(1, 1) + 5;
 	asm!("xor rax, rax");
 	printf("%d\n", num);
 
