@@ -1,59 +1,59 @@
-fn puts(a: i64);
-fn exit(code: i32);
-fn printf(fmt: i64, n: i32);
-fn putchar(c: i8);
-fn strlen(ptr: i64) -> i32;
-fn strcmp(ptr: i64, ptr2: i64) -> i32;
+fn puts(a: i64)
+fn exit(code: i32)
+fn printf(fmt: i64, n: i32)
+fn putchar(c: i8)
+fn strlen(ptr: i64) -> i32
+fn strcmp(ptr: i64, ptr2: i64) -> i32
 
 fn myputchar(c: i8) {
-	putchar(c);
-	putchar(10);
+	putchar(c)
+	putchar(10)
 }
 
 fn abc() {
-	putchar(65);
-	putchar(66);
-	putchar(67);
-	putchar(10); /* newline */
+	putchar(65)
+	putchar(66)
+	putchar(67)
+	putchar(10) /* newline */
 }
 
 fn div(x: i32, y: i32) -> i32 {
-	return x / y;
+	return x / y
 }
 
 fn sum(x: i32, y: i32) -> i32 {
-	return x + y;
+	return x + y
 }
 
 fn sqr(x: i32) -> i32 {
-	return x * x;
+	return x * x
 }
 
 fn main(argc: i32) -> i32 {
 	if (argc == 1) {
-		puts("not enough arguments");
-		exit(1);
+		puts("not enough arguments")
+		exit(1)
 	}
 
-	let ret = strcmp("hi", "hi");
+	let ret = strcmp("hi", "hi")
 	if (ret == 0) {
-		puts("condition is true");
+		puts("condition is true")
 	}
 
 	if (ret != 0) {
-		puts("condition is false");
+		puts("condition is false")
 	}
 
-	let num = 10 / sum(1, 1) + 5;
-	asm!("xor rax, rax");
-	printf("%d\n", num);
+	let num = 10 / sum(1, 1) + 5
+	asm!("xor rax, rax")
+	printf("%d\n", num)
 
-	let x: i32;
-	x = 5;
+	let x: i32
+	x = 5
 
-	asm!("xor rax, rax");
-	printf("%d\n", x);
+	asm!("xor rax, rax")
+	printf("%d\n", x)
 
-	puts("exiting...");
-	return 0;
+	puts("exiting...")
+	return 0
 }

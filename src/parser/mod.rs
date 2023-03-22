@@ -73,7 +73,10 @@ fn seperate_expression(iter: &mut core::slice::Iter<TokenType>, terminator: char
 
 	for i in iter.by_ref() {
 		match i {
+			/* if we stumble upon a newline and the input was ';', that means we should stop */
+			Newline if terminator == ';' => break,
 			Operator(x) if *x == terminator => break,
+			
 			_ => expression.push(i.clone())
 		}
 	}
