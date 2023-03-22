@@ -419,6 +419,26 @@ pub fn parse(input: Vec<TokenType>) -> Result<Vec<AstType>, (String, i64)> {
 						let expr = seperate_expression(&mut iter, ';');
 
 						ast.push(AstType::VariableAssigment(identifier.to_owned(), expr));
+					},
+					/* arithmetic assignment operators, like +=, -=, *= and /= */
+					Some(Operator(x)) => {
+						match x {
+							'+' | '-' | '*' | '/' => (),
+							err => return Err((format!("expected either +, -, * or /, before '=' but got '{err}'"), line))
+						}
+
+						match iter.next() {
+							Some(Operator('=')) => (),
+							_ => return Err((format!("expected operator '=' after '{x}'"), line))
+						}
+
+						let mut expr = seperate_expression(&mut iter, ';');
+						/* insert '{identifier} {operator} to the start of the expression ' */
+						/* like 'num + ' */
+						expr.insert(0, Operator(*x));
+						expr.insert(0, Identifier(identifier.clone()));
+
+						ast.push(AstType::VariableAssigment(identifier.to_owned(), expr));
 					}
 					Some(x) => return Err((format!("expected either operator '(' or operator '=' after identifier {identifier} but got '{x}'"), line)),
 					None => return Err((format!("expected either operator '(' or operator '=' after identifier {identifier}, but got nothing"), line))

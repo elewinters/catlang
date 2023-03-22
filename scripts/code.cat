@@ -48,7 +48,7 @@ fn main(argc: i32) -> i32 {
 	asm!("xor rax, rax");
 	printf("%d\n", num);
 
-	num = num + 5;
+	num += 10;
 
 	asm!("xor rax, rax");
 	printf("%d\n", num);
