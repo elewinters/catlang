@@ -328,7 +328,7 @@ fn infer_type(state: &mut State, expr: &Expression) -> Result<DataType, (String,
 pub fn generate(state: &mut State, input: &[AstType]) -> Result<(), (String, i64)> {
 	let iter = input.iter();
 
-	'outer: for i in iter {
+	for i in iter {
 		match i {
 			AstType::Newline => state.line += 1,
 			/* ---------------------------- */
@@ -486,14 +486,7 @@ pub fn generate(state: &mut State, input: &[AstType]) -> Result<(), (String, i64
 			/*           macros           */
 			/* -------------------------- */
 			MacroCall(name, args) => {
-				for (macro_name, function) in macros::MACROS {
-					if (macro_name == name) {
-						function(state, args)?;
-						continue 'outer;
-					}
-				}
-
-				return Err((format!("macro '{}' does not exist", name), state.line));
+				macros::call_macro(state, name, args)?;
 			},
 		}
 	}

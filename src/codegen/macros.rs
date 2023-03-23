@@ -1,12 +1,23 @@
 use crate::lexer;
 use super::*;
 
-type MacroDefinition = fn(&mut State, &Vec<Expression>) -> Result<(), (String, i64)>;
+type MacroDefinition = fn(&mut State, &[Expression]) -> Result<(), (String, i64)>;
 
-pub const MACROS: [(&str, MacroDefinition); 2] = [
+const MACROS: [(&str, MacroDefinition); 2] = [
 	("asm!", asm as MacroDefinition),
 	("syscall!", syscall as MacroDefinition)
 ];
+
+pub fn call_macro(state: &mut State, macro_name: &str, args: &[Expression]) -> Result<(), (String, i64)> {
+	for (name, function) in macros::MACROS {
+		if (name == macro_name) {
+			function(state, args)?;
+			return Ok(());
+		}
+	}
+
+	Err((format!("macro '{}' does not exist", macro_name), state.line))
+}
 
 /* -------------- */
 /*      asm!      */
@@ -22,7 +33,7 @@ fn parse_asm(state: &State, input: &str) -> Result<String, (String, i64)> {
 			Operator('{') => {
 				let identifier = match iter.next() {
 					Some(Identifier(x)) => x,
-					_ => return Err((format!("expected identifier after operator '{{' in asm! macro call"), state.line))
+					_ => return Err((String::from("expected identifier after operator '{' in asm! macro call"), state.line))
 				};
 				
 				let variable = match state.current_function.local_variables.get(identifier) {
@@ -41,7 +52,7 @@ fn parse_asm(state: &State, input: &str) -> Result<String, (String, i64)> {
 			Keyword(x) | Identifier(x) | IntLiteral(x) => output.push_str(&format!(" {x}")),
 			Operator(x) => output.push(*x),
 
-			StringLiteral(_) => return Err((format!("string literals are not allowed in the asm! macro"), state.line)),
+			StringLiteral(_) => return Err((String::from("string literals are not allowed in the asm! macro"), state.line)),
 			TokenType::Newline => panic!("newline token in asm! macro call, this is never supposed to happen")
 		}	
 	}
@@ -52,14 +63,14 @@ fn parse_asm(state: &State, input: &str) -> Result<String, (String, i64)> {
 	Ok(output)
 }
 
-pub fn asm(state: &mut State, args: &Vec<Expression>) -> Result<(), (String, i64)> {
+fn asm(state: &mut State, args: &[Expression]) -> Result<(), (String, i64)> {
 	let instruction = match &args[0][0] {
 		StringLiteral(ref x) => x,
 		err => return Err((format!("expected token type to be a string literal, not {err}"), state.line))
 	};
 
 	/* state doesnt get mutated here, just read  */
-	let parsed = parse_asm(state, &instruction)?;
+	let parsed = parse_asm(state, instruction)?;
 	state.textsect.push_str(&format!("\t{parsed}\n"));
 
 	Ok(())
@@ -68,7 +79,7 @@ pub fn asm(state: &mut State, args: &Vec<Expression>) -> Result<(), (String, i64
 /* ------------------ */
 /*      syscall!      */
 /* ------------------ */
-pub fn syscall(state: &mut State, args: &Vec<Expression>) -> Result<(), (String, i64)> {
+fn syscall(state: &mut State, args: &[Expression]) -> Result<(), (String, i64)> {
 	for (i, v) in args.iter().enumerate() {
 		let v = eval_expression(state, v, &DataType::new("i64", state.line)?)?;
 
