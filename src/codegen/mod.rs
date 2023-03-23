@@ -139,6 +139,7 @@ fn eval_expression(state: &mut State, expr: &Expression, expected_type: &DataTyp
 				iter.next(); /* strip ( */
 				let args = process_function_parameters(iter);
 				
+				/* return type of function */
 				let return_type = if (!name.ends_with('!')) {
 					call_function(state, name, &args)?;
 
@@ -150,6 +151,7 @@ fn eval_expression(state: &mut State, expr: &Expression, expected_type: &DataTyp
 						None => return Err((format!("attempted to get return value of function '{name}', but it does not return anything"), state.line))
 					}
 				}
+				/* return type of macro */
 				else {
 					macros::call_macro(state, name, &args)?;
 					let macro_obj = macros::get_macro(state, name)?;
@@ -311,6 +313,7 @@ fn infer_type(state: &mut State, expr: &Expression) -> Result<DataType, (String,
 		Some(TokenType::Identifier(identifier)) => {
 			/* function/macro calls */
 			if let Some(Operator('(')) = iter.next() {
+				/* return function return type */
 				if (!identifier.ends_with('!')) {
 					match state.functions.get(identifier) {
 						Some(x) => match &x.return_type {
@@ -321,6 +324,7 @@ fn infer_type(state: &mut State, expr: &Expression) -> Result<DataType, (String,
 					}
 				}
 
+				/* return macro return type */
 				match macros::get_macro(state, identifier)?.return_type {
 					Some(x) => Ok(DataType::new(x, state.line)?), /* we return here */
 					None => Err((format!("attempted to use return value of macro '{identifier}' in expression but it does not return anything"), state.line))

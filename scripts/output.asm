@@ -4,9 +4,10 @@ section .data
 	L2: db `hi`, 0
 	L3: db `condition is true`, 0
 	L4: db `condition is false`, 0
-	L5: db `%d\n`, 0
-	L6: db `Hello, world!\n`, 0
-	L7: db `exiting...`, 0
+	L5: db `Hello, world!`, 0
+	L6: db `i64`, 0
+	L7: db `Hello, world!\n`, 0
+	L8: db `exiting...`, 0
 section .text
 
 extern puts
@@ -148,26 +149,27 @@ main:
 	call puts
 
 .L3:
-	mov eax, 420
-	mov dword [rbp-20], eax
-	xor rax, rax
-	mov rdi, L5
-	mov esi, [rbp-20]
-	call printf
+	mov qword [rbp-24], L5
+	mov rdi, [rbp-24]
+	call puts
 
-	mov qword [rbp-28], 1
-	mov rbx, [rbp-28]
+	mov rax, L6
+	mov qword [rbp-32], rax
+	mov rdi, [rbp-32]
+	call puts
+
+	mov rbx, [rbp-24]
 	sub rbx, 1
 	add rbx, 1
 	mov rax, rbx
-	mov rdi, [rbp-28]
-	mov rsi, L6
+	mov rdi, [rbp-24]
+	mov rsi, L7
 	mov rbx, 10
 	add rbx, 4
 	mov rdx, rbx
 	syscall
 
-	mov rdi, L7
+	mov rdi, L8
 	call puts
 
 	mov eax, 0

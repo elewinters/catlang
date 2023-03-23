@@ -44,12 +44,11 @@ fn main(argc: i32) -> i32 {
 		puts("condition is false");
 	}
 
-	let num = typeof!("hey");
-	asm!("xor rax, rax");
-	printf("%d\n", num);
+	let x = "Hello, world!";
+	puts(x);
 
-	let x: i64;
-	x = 1;
+	let y = typeof!(x);
+	puts(y);
 
 	syscall!(x - 1 + 1, x, "Hello, world!\n", 10 + 4);
 

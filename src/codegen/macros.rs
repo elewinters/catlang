@@ -20,7 +20,7 @@ const MACROS: [(&str, Macro); 3] = [
 	}),
 
 	("typeof!", Macro {
-		return_type: Some("i32"), 
+		return_type: Some("i64"), 
 		function: typeof_}
 	)
 ];
@@ -43,8 +43,22 @@ pub fn call_macro(state: &mut State, macro_name: &str, args: &[Expression]) -> R
 /* ----------------- */
 /*      typeof!      */
 /* ----------------- */
-fn typeof_(state: &mut State, _: &[Expression]) -> Result<(), (String, i64)> {
-	state.textsect.push_str("\tmov eax, 420\n");
+fn typeof_(state: &mut State, args: &[Expression]) -> Result<(), (String, i64)> {
+	if (args.len() != 1) {
+		return Err((format!("typeof! macro accepts 1 argument, not {}", args.len()), state.line))
+	}
+
+	let variable = match &args[0][0] {
+		Identifier(x) => match state.current_function.local_variables.get(x) {
+			Some(x) => x,
+			None => return Err((format!("variable '{x}' is not defined in the current scope in call to typeof! macro"), state.line))
+		}
+		err => return Err((format!("argument to typeof! must be a valid identifier, not {err}"), state.line))
+	};
+
+	let to_return = resolve_string_literal(&mut state.datasect, &variable.vartype.string);
+	state.textsect.push_str(&format!("\tmov rax, {to_return}\n"));
+
 	Ok(())
 }
 
@@ -93,6 +107,10 @@ fn parse_asm(state: &State, input: &str) -> Result<String, (String, i64)> {
 }
 
 fn asm(state: &mut State, args: &[Expression]) -> Result<(), (String, i64)> {
+	if (args.len() != 1) {
+		return Err((format!("asm! macro accepts 1 argument, not {}", args.len()), state.line))
+	}
+
 	let instruction = match &args[0][0] {
 		StringLiteral(ref x) => x,
 		err => return Err((format!("expected token type to be a string literal, not {err}"), state.line))
