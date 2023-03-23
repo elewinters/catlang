@@ -1,3 +1,4 @@
+use crate::lexer;
 use super::*;
 
 type MacroDefinition = fn(&mut State, &Vec<Expression>) -> Result<(), (String, i64)>;
@@ -10,13 +11,56 @@ pub const MACROS: [(&str, MacroDefinition); 2] = [
 /* -------------- */
 /*      asm!      */
 /* -------------- */
+fn parse_asm(state: &State, input: &str) -> Result<String, (String, i64)> {
+	let tokens = lexer::lex(input.as_bytes());
+	let mut iter = tokens.iter();
+
+	let mut output = String::new();
+
+	while let Some(i) = iter.next() {
+		match (i) {
+			Operator('{') => {
+				let identifier = match iter.next() {
+					Some(Identifier(x)) => x,
+					_ => return Err((format!("expected identifier after operator '{{' in asm! macro call"), state.line))
+				};
+				
+				let variable = match state.current_function.local_variables.get(identifier) {
+					Some(x) => x,
+					None => return Err((format!("undeclared variable '{identifier}' in asm! macro call"), state.line))
+				};
+
+				match iter.next() {
+					Some(Operator('}')) => (),
+					_ => return Err((format!("expected operator '}}' after identifier '{identifier}' in asm! macro call"), state.line))
+				}
+
+				output.push_str(&format!(" {}", variable.addr));
+			}
+
+			Keyword(x) | Identifier(x) | IntLiteral(x) => output.push_str(&format!(" {x}")),
+			Operator(x) => output.push(*x),
+
+			StringLiteral(_) => return Err((format!("string literals are not allowed in the asm! macro"), state.line)),
+			TokenType::Newline => panic!("newline token in asm! macro call, this is never supposed to happen")
+		}	
+	}
+
+	/* strip the whitespace space at the beginning of the string */
+	output.remove(0);
+
+	Ok(output)
+}
+
 pub fn asm(state: &mut State, args: &Vec<Expression>) -> Result<(), (String, i64)> {
 	let instruction = match &args[0][0] {
 		StringLiteral(ref x) => x,
 		err => return Err((format!("expected token type to be a string literal, not {err}"), state.line))
 	};
 
-	state.textsect.push_str(&format!("\t{}\n", instruction));
+	/* state doesnt get mutated here, just read  */
+	let parsed = parse_asm(state, &instruction)?;
+	state.textsect.push_str(&format!("\t{parsed}\n"));
 
 	Ok(())
 }

@@ -59,7 +59,7 @@ fn main() {
 	/* --------------------------- */
 	/*    lex input into tokens    */
 	/* --------------------------- */
-	let tokens = lexer::lex(options.input);
+	let tokens = lexer::lex(&options.input);
 	if (options.verbose) {
 		println!("--------------------");
 		println!("       tokens       ");

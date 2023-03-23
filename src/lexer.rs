@@ -67,7 +67,7 @@ pub fn print_tokens(input: &Vec<TokenType>) {
 	println!();
 }
 
-pub fn lex(input: Vec<u8>) -> Vec<TokenType> {
+pub fn lex(input: &[u8]) -> Vec<TokenType> {
 	let mut tokens: Vec<TokenType> = Vec::new();
 	let mut iter = input.iter().peekable();
 

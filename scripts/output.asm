@@ -162,7 +162,7 @@ main:
 
 	add ebx, 5
 	mov dword [rbp-20], ebx
-	xor rax, rax
+	mov dword [rbp-20], 5
 	mov rdi, L5
 	mov esi, [rbp-20]
 	call printf

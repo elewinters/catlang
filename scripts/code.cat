@@ -45,7 +45,7 @@ fn main(argc: i32) -> i32 {
 	}
 
 	let num = 10 / sum(1, 1) + 5;
-	asm!("xor rax, rax");
+	asm!("mov dword {num}, 5");
 	printf("%d\n", num);
 
 	let x: i64;
