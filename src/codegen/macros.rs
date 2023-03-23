@@ -1,8 +1,4 @@
-use super::State;
-use super::Expression;
-use super::TokenType::*;
-
-use super::resolve_string_literal;
+use super::*;
 
 type MacroDefinition = fn(&mut State, &Vec<Expression>) -> Result<(), (String, i64)>;
 
@@ -30,23 +26,7 @@ pub fn asm(state: &mut State, args: &Vec<Expression>) -> Result<(), (String, i64
 /* ------------------ */
 pub fn syscall(state: &mut State, args: &Vec<Expression>) -> Result<(), (String, i64)> {
 	for (i, v) in args.iter().enumerate() {
-		let v = match &(v[0]) {
-			IntLiteral(x) => x.to_owned(),
-			StringLiteral(x) => resolve_string_literal(&mut state.datasect, x),
-			Identifier(varname) => { 
-				match state.current_function.local_variables.get(varname) {
-					Some(var) => {
-						if (var.vartype.string != "i64") {
-							return Err((format!("syscall! macro only accepts arguments of type i64, yet type of '{varname}' is {}", var.vartype.string), state.line));
-						}
-						var.addr.clone()
-					}
-					None => return Err((format!("variable '{varname}' is not defined in the current scope"), state.line))
-				}
-			},
-
-			err => return Err((format!("expected either an int literal, string literal or identifier in call to macro syscall!, but got {err}"), state.line))
-		};
+		let v = eval_expression(state, v, &DataType::new("i64", state.line)?)?;
 
 		match i {
 			0 => state.textsect.push_str(&format!("\tmov rax, {v}\n")),

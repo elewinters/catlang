@@ -168,10 +168,15 @@ main:
 	call printf
 
 	mov qword [rbp-28], 1
-	mov rax, [rbp-28]
+	mov rbx, [rbp-28]
+	sub rbx, 1
+	add rbx, 1
+	mov rax, rbx
 	mov rdi, [rbp-28]
 	mov rsi, L6
-	mov rdx, 14
+	mov rbx, 10
+	add rbx, 4
+	mov rdx, rbx
 	syscall
 
 	mov rdi, L7
