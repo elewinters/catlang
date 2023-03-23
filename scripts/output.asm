@@ -148,26 +148,8 @@ main:
 	call puts
 
 .L3:
-	mov ebx, 5
-	imul ebx, 5
-	imul ebx, 5
-
-	cdq
-	mov r11d, 2
-	mov eax, ebx
-	idiv r11d
-	mov ebx, eax
-
-	add ebx, 10
-	imul ebx, 2
-
-	cdq
-	mov r11d, 9
-	mov eax, ebx
-	idiv r11d
-	mov ebx, eax
-
-	mov dword [rbp-20], ebx
+	mov eax, 420
+	mov dword [rbp-20], eax
 	xor rax, rax
 	mov rdi, L5
 	mov esi, [rbp-20]

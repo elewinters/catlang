@@ -3,20 +3,49 @@ use super::*;
 
 type MacroDefinition = fn(&mut State, &[Expression]) -> Result<(), (String, i64)>;
 
-const MACROS: [(&str, MacroDefinition); 2] = [
-	("asm!", asm as MacroDefinition),
-	("syscall!", syscall as MacroDefinition)
+pub struct Macro {
+	pub return_type: Option<&'static str>,
+	pub function: MacroDefinition 
+}
+
+const MACROS: [(&str, Macro); 3] = [
+	("asm!", Macro {
+		return_type: None,
+		function: asm
+	}),
+
+	("syscall!", Macro {
+		return_type: None,
+		function: syscall
+	}),
+
+	("typeof!", Macro {
+		return_type: Some("i32"), 
+		function: typeof_}
+	)
 ];
 
-pub fn call_macro(state: &mut State, macro_name: &str, args: &[Expression]) -> Result<(), (String, i64)> {
-	for (name, function) in macros::MACROS {
+pub fn get_macro(state: &State, macro_name: &str) -> Result<Macro, (String, i64)> {
+	for (name, macro_obj) in MACROS {
 		if (name == macro_name) {
-			function(state, args)?;
-			return Ok(());
+			return Ok(macro_obj);
 		}
 	}
 
 	Err((format!("macro '{}' does not exist", macro_name), state.line))
+}
+
+pub fn call_macro(state: &mut State, macro_name: &str, args: &[Expression]) -> Result<(), (String, i64)> {
+	let function_ptr = get_macro(state, macro_name)?.function;
+	function_ptr(state, args)
+}
+
+/* ----------------- */
+/*      typeof!      */
+/* ----------------- */
+fn typeof_(state: &mut State, _: &[Expression]) -> Result<(), (String, i64)> {
+	state.textsect.push_str("\tmov eax, 420\n");
+	Ok(())
 }
 
 /* -------------- */

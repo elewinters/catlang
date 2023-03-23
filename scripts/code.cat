@@ -44,7 +44,7 @@ fn main(argc: i32) -> i32 {
 		puts("condition is false");
 	}
 
-	let num = 5*5*5/2+10*2/9;
+	let num = typeof!("hey");
 	asm!("xor rax, rax");
 	printf("%d\n", num);
 

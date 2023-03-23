@@ -134,23 +134,34 @@ fn eval_expression(state: &mut State, expr: &Expression, expected_type: &DataTyp
 			(Some(IntLiteral(x)), _) => x.to_string(),
 			(Some(StringLiteral(x)), _) => resolve_string_literal(&mut state.datasect, x),
 
-			/* function calls */
-			(Some(Identifier(function_name)), Some(Operator('('))) => {
+			/* function/macro calls */
+			(Some(Identifier(name)), Some(Operator('('))) => {
 				iter.next(); /* strip ( */
-
 				let args = process_function_parameters(iter);
-				call_function(state, function_name, &args)?;
-		
-				/* this unwrap will never fail because call_function will have handled it already at this point */
-				let function = state.functions.get(function_name).unwrap();
+				
+				let return_type = if (!name.ends_with('!')) {
+					call_function(state, name, &args)?;
+
+					/* unwrap will never fail as call_funtion will have hanndled it at this point */
+					let function = state.functions.get(name).unwrap();
 	
-				let return_type = match &function.return_type {
-					Some(x) => x,
-					None => return Err((format!("attempted to get return value of function '{function_name}', but it does not return anything"), state.line))
+					match &function.return_type {
+						Some(x) => x.clone(),
+						None => return Err((format!("attempted to get return value of function '{name}', but it does not return anything"), state.line))
+					}
+				}
+				else {
+					macros::call_macro(state, name, &args)?;
+					let macro_obj = macros::get_macro(state, name)?;
+
+					match macro_obj.return_type {
+						Some(x) => DataType::new(x, state.line)?,
+						None => return Err((format!("attempted to get return value of macro '{name}', but it does not return anything"), state.line))
+					}
 				};
-	
-				if (return_type != expected_type) {
-					return Err((format!("expected expression to evaluate to '{}', but the return type of '{function_name}' is '{}'", expected_type.string, return_type.string), state.line));
+		
+				if (&return_type != expected_type) {
+					return Err((format!("expected expression to evaluate to '{}', but the return type of '{name}' is '{}'", expected_type.string, return_type.string), state.line));
 				}
 
 				get_accumulator(&return_type.word).to_owned()
@@ -298,14 +309,21 @@ fn infer_type(state: &mut State, expr: &Expression) -> Result<DataType, (String,
 	let mut iter = expr.iter();
 	match iter.next() {
 		Some(TokenType::Identifier(identifier)) => {
-			/* function calls */
+			/* function/macro calls */
 			if let Some(Operator('(')) = iter.next() {
-				match state.functions.get(identifier) {
-					Some(x) => match &x.return_type {
-						Some(x) => Ok(x.clone()), /* we return here */
-						None => Err((format!("attempted to use return value of function '{identifier}' in expression but it does not return anything"), state.line))
-					},
-					None => Err((format!("attempted to call function '{identifier}' in expression but it is not defined in the current scope"), state.line))
+				if (!identifier.ends_with('!')) {
+					match state.functions.get(identifier) {
+						Some(x) => match &x.return_type {
+							Some(x) => return Ok(x.clone()), /* we return here */
+							None => return Err((format!("attempted to use return value of function '{identifier}' in expression but it does not return anything"), state.line))
+						},
+						None => return Err((format!("attempted to call function '{identifier}' in expression but it is not defined in the current scope"), state.line))
+					}
+				}
+
+				match macros::get_macro(state, identifier)?.return_type {
+					Some(x) => Ok(DataType::new(x, state.line)?), /* we return here */
+					None => Err((format!("attempted to use return value of macro '{identifier}' in expression but it does not return anything"), state.line))
 				}
 			}
 			/* variables */
