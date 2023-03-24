@@ -22,18 +22,10 @@ macro_rules! exit {
 	TODO:
 		rewrite the lexer
 
-		add a more versatile macro system that can be used in expressions like a function call
-		this could include a typeof!(variable) macro that returns a string representation of the variable's type
-
-		also expand the asm! macro, and adding the ability to put something like asm!("mov rax, {variable_name}") 
-		which will have have '{variable_name}' be replaced with the address on the stack of that variable
-
-		also add multiline string literals and escape sequences in the asm! macro
-
-		make it so that when you create a new variable with 'let' you dont have to specify an initializer value
-
 		add elseifs and else
 
+		add pointers
+		add support for more than 6 arguments
 		add arrays
 		add support for variadic functions
 

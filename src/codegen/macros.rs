@@ -89,19 +89,19 @@ fn parse_asm(state: &State, input: &str) -> Result<String, (String, i64)> {
 					_ => return Err((format!("expected operator '}}' after identifier '{identifier}' in asm! macro call"), state.line))
 				}
 
-				output.push_str(&format!(" {}", variable.addr));
+				output.push_str(&format!("{} ", variable.addr));
 			}
 
-			Keyword(x) | Identifier(x) | IntLiteral(x) => output.push_str(&format!(" {x}")),
+			Keyword(x) | Identifier(x) | IntLiteral(x) => output.push_str(&format!("{x} ")),
+			Operator(',') => { output.pop(); output.push_str(", ") },
 			Operator(x) => output.push(*x),
 
 			StringLiteral(_) => return Err((String::from("string literals are not allowed in the asm! macro"), state.line)),
-			TokenType::Newline => panic!("newline token in asm! macro call, this is never supposed to happen")
+			TokenType::Newline => output.push_str("\n\t"),
 		}	
 	}
 
-	/* strip the whitespace space at the beginning of the string */
-	output.remove(0);
+	output = output.trim().to_owned();
 
 	Ok(output)
 }
@@ -118,7 +118,7 @@ fn asm(state: &mut State, args: &[Expression]) -> Result<(), (String, i64)> {
 
 	/* state doesnt get mutated here, just read  */
 	let parsed = parse_asm(state, instruction)?;
-	state.textsect.push_str(&format!("\t{parsed}\n"));
+	state.textsect.push_str(&format!("\t{parsed}\n\n"));
 
 	Ok(())
 }
