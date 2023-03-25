@@ -1,7 +1,7 @@
 use std::fs;
 use std::env;
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Options {
 	pub input: Vec<u8>,
 	pub output_name: Option<String>,
@@ -25,50 +25,40 @@ fn print_help() {
 }
 
 pub fn get_options() -> Result<Options, String> {
-	let args: Vec<String> = env::args().collect();
+	let mut args = env::args();
+	let mut options = Options::default();
+
 	if (args.len() == 1) {
-		return Err(format!("no arguments specified, try '{} --help' for more information", args[0]));
+		return Err(String::from("no arguments specified, try 'catlang --help' for more information"));
 	}
+	
+	/* get rid of the program name */
+	args.next();
 
-	let mut options = Options {
-		input: Vec::new(),
-		output_name: None,
-		create_binary: false,
-		link_libc: false,
-		verbose: false		
-	};
-
-	let mut i = 1;
-	while i < args.len() {
-		if (args[i] == "-h" || args[i] == "--help") {
+	while let Some(i) = args.next() {
+		if (i == "-h" || i == "--help") {
 			print_help();
 		}
-		else if (args[i] == "-b" || args[i] == "--create-binary") {
+		else if (i == "-b" || i == "--create-binary") {
 			options.create_binary = true;
 		}
-		else if (args[i] == "-lc" || args[i] == "--link-libc") {
+		else if (i == "-lc" || i == "--link-libc") {
 			options.link_libc = true;
 		}
-		else if (args[i] == "-V" || args[i] == "--verbose") {
+		else if (i == "-V" || i == "--verbose") {
 			options.verbose = true;
 		}
-		else if (args[i] == "-o" || args[i] == "--output-name") {
-			if (args.len() <= i+1) {
-				return Err(String::from("no output name specified after -o/--output-name option"));
-			}
-			
-			options.output_name = Some(args[i+1].clone());
-
-			i += 1;
+		else if (i == "-o" || i == "--output-name") {
+			options.output_name = args.next();
 		}
-		else if (!args[i].starts_with('-')) {
+		else if (!i.starts_with('-')) {
 			if (!options.input.is_empty()) {
 				return Err(String::from("more than one input file"));
 			}
 			
-			let input: Vec<u8> = match(fs::read(&args[i])) {
+			let input: Vec<u8> = match(fs::read(&i)) {
 				Ok(x) => x,
-				Err(_) => return Err(format!("input file '{}' cannot be read", args[i]))
+				Err(err) => return Err(format!("input file '{}' cannot be read [{err}]", i))
 			};
 
 			if (!input.is_ascii()) {
@@ -78,14 +68,12 @@ pub fn get_options() -> Result<Options, String> {
 			options.input = input;
 		}
 		else {
-			return Err(format!("invalid option '{}'", args[i]));
+			return Err(format!("invalid option '{}'", i));
 		}
-
-		i += 1;
 	}
 
 	if (options.link_libc && !options.create_binary) {
-		return Err(String::from("--link_libc option is set but --create_binary option isn't, try removing it"));
+		return Err(String::from("--link_libc option is set but --create_binary option isn't"));
 	}
 
 	if (options.input.is_empty()) {

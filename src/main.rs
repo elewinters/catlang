@@ -87,9 +87,9 @@ fn main() {
 		println!();
 	}
 
-	/* -------------------------------------------- */
-	/*  parse AST and generate the assembly output  */
-	/* -------------------------------------------- */
+	/* --------------------------------------------- */
+	/*   generate the assembly output from the AST   */
+	/* --------------------------------------------- */
 	let mut state = codegen::State::default();
 	if let Err((err, line)) = codegen::generate(&mut state, &ast) {
 		exit!(format!("[line {}] {}", (line+1), err))
