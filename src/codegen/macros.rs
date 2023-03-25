@@ -1,7 +1,7 @@
 use crate::lexer;
 use super::*;
 
-type MacroDefinition = fn(&mut State, &[Expression]) -> Result<(), (String, i64)>;
+type MacroDefinition = fn(&mut State, &[Expression]) -> Result<Option<String>, (String, i64)>;
 
 pub struct Macro {
 	pub return_type: Option<&'static str>,
@@ -35,7 +35,7 @@ pub fn get_macro(state: &State, macro_name: &str) -> Result<Macro, (String, i64)
 	Err((format!("macro '{}' does not exist", macro_name), state.line))
 }
 
-pub fn call_macro(state: &mut State, macro_name: &str, args: &[Expression]) -> Result<(), (String, i64)> {
+pub fn call_macro(state: &mut State, macro_name: &str, args: &[Expression]) -> Result<Option<String>, (String, i64)> {
 	let function_ptr = get_macro(state, macro_name)?.function;
 	function_ptr(state, args)
 }
@@ -43,7 +43,7 @@ pub fn call_macro(state: &mut State, macro_name: &str, args: &[Expression]) -> R
 /* ----------------- */
 /*      typeof!      */
 /* ----------------- */
-fn typeof_(state: &mut State, args: &[Expression]) -> Result<(), (String, i64)> {
+fn typeof_(state: &mut State, args: &[Expression]) -> Result<Option<String>, (String, i64)> {
 	if (args.len() != 1) {
 		return Err((format!("typeof! macro accepts 1 argument, not {}", args.len()), state.line))
 	}
@@ -57,9 +57,8 @@ fn typeof_(state: &mut State, args: &[Expression]) -> Result<(), (String, i64)> 
 	};
 
 	let to_return = resolve_string_literal(&mut state.datasect, &variable.vartype.string);
-	state.textsect.push_str(&format!("\tmov rax, {to_return}\n"));
 
-	Ok(())
+	Ok(Some(to_return))
 }
 
 /* -------------- */
@@ -106,7 +105,7 @@ fn parse_asm(state: &State, input: &str) -> Result<String, (String, i64)> {
 	Ok(output)
 }
 
-fn asm(state: &mut State, args: &[Expression]) -> Result<(), (String, i64)> {
+fn asm(state: &mut State, args: &[Expression]) -> Result<Option<String>, (String, i64)> {
 	if (args.len() != 1) {
 		return Err((format!("asm! macro accepts 1 argument, not {}", args.len()), state.line))
 	}
@@ -120,13 +119,13 @@ fn asm(state: &mut State, args: &[Expression]) -> Result<(), (String, i64)> {
 	let parsed = parse_asm(state, instruction)?;
 	state.textsect.push_str(&format!("\t{parsed}\n\n"));
 
-	Ok(())
+	Ok(None)
 }
 
 /* ------------------ */
 /*      syscall!      */
 /* ------------------ */
-fn syscall(state: &mut State, args: &[Expression]) -> Result<(), (String, i64)> {
+fn syscall(state: &mut State, args: &[Expression]) -> Result<Option<String>, (String, i64)> {
 	for (i, v) in args.iter().enumerate() {
 		let v = eval_expression(state, v, &DataType::new("i64", state.line)?)?;
 
@@ -144,5 +143,5 @@ fn syscall(state: &mut State, args: &[Expression]) -> Result<(), (String, i64)> 
 	
 	state.textsect.push_str("\tsyscall\n\n");
 
-	Ok(())
+	Ok(None)
 }

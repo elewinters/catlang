@@ -28,6 +28,8 @@ macro_rules! exit {
 		make a DataTypeEnum instead of just constructing DataTypes from strings
 		make it so that ebx is only pushed at the start of a function when we actually use it
 
+		add operator precedence to expressions
+
 		add some sort of constant expression handler, like calculating simple expressions like 5+5 at compile time
 		and inserting the result, instead of using registers and shit to actually calculate it at runtime
 
