@@ -15,7 +15,7 @@ const MACROS: [(&str, Macro); 3] = [
 	}),
 
 	("syscall!", Macro {
-		return_type: None,
+		return_type: Some("i64"),
 		function: syscall
 	}),
 
@@ -143,5 +143,5 @@ fn syscall(state: &mut State, args: &[Expression]) -> Result<Option<String>, (St
 	
 	state.textsect.push_str("\tsyscall\n\n");
 
-	Ok(None)
+	Ok(Some(String::from("rax")))
 }

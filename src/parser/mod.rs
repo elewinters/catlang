@@ -451,7 +451,8 @@ pub fn parse(input: Vec<TokenType>) -> Result<Vec<AstType>, (String, i64)> {
 					None => return Err((format!("expected either operator '(' or operator '=' after identifier {identifier}, but got nothing"), line))
 				}
 			}
-			_ => (),
+			Operator(';') => (),
+			err => return Err((format!("unexpected stray {err}"), line)),
 		}
 	}
 

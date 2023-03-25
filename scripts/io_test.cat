@@ -1,48 +1,38 @@
-fn print(str: int64, len: int64) {
+fn print(str: i64, len: i64) {
 	/* sys_write to stdout (1) */
 	syscall!(1, 1, str, len);
 }
 
-fn sys_exit(exit_code: int64) {
+fn sys_exit(exit_code: i64) {
 	/* sys_exit */
 	syscall!(60, exit_code);
 }
 
-fn write_file(filename: int64, content: int64, content_len: int64) {
+fn write_file(filename: i64, content: i64, content_len: i64) {
 	/* 65 meaning write and create */
-	syscall!(2, filename, 65, 0644o);
-
-	/* save return value into fd */
-	let fd: int64 = 0;
-	asm!("mov qword [rbp-32], rax");
-
+	let fd = syscall!(2, filename, 65, 0644o);
 	/* sys_write */
 	syscall!(1, fd, content, content_len);
 	/* sys_close */
 	syscall!(3, fd);
 }
 
-fn print_file(filename: int64) {
+fn read_file(filename: i64, len: i64) -> i64 {
 	/* sys_open, 0 meaning readonly */
 	/* the return value gets stored in rax */
-	syscall!(2, filename, 0, 0644o);
+	let fd = syscall!(2, filename, 0, 0644o);
 
-	/* we save the file descriptor as */
-	/* syscall! will overwrite it */
-	let fd: int64 = 0;
-	asm!("mov qword [rbp-16], rax");
-
-	/* sys_read */
-	/* we cant store string literals in */
-	/* variables yet so this will have to do */
-	syscall!(0, fd, "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0", 16);
-
-	asm!("mov rdi, L0");
-	asm!("mov rsi, 16");
-	asm!("call print");
+	let buf = "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
+	syscall!(0, fd, buf, len);
 
 	/* sys_close */
 	syscall!(3, fd);
+
+	return buf;
+}
+
+fn print_file(filename: i64, len: i64) {
+	print(read_file(filename, len), len);
 }
 
 fn _start() {
@@ -50,9 +40,12 @@ fn _start() {
 	print("yass girl\n", 10);
 	print("meow :3\n", 8);
 
-	write_file("scripts/hello.txt", "cat language", 12);
-	
-	print_file("scripts/hello.txt");
+	write_file("hello.txt", "cat language", 12);
+
+	print_file("hello.txt", 12);
+	print("\n", 1);
+
+	print(read_file("hello.txt", 12), 12);
 	print("\n", 1);
 		
 	sys_exit(0);
