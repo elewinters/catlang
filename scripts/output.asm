@@ -153,10 +153,10 @@ main:
 	mov rdi, [rbp-24]
 	call puts
 
-	mov rax, 1 
-	mov rdi, 1 
-	mov rsi, L0 
-	mov rdx, 2 
+	mov rax, 1
+	mov rdi, 1
+	mov rsi, [rbp-24]
+	mov rdx, 2
 	syscall
 
 	mov rax, L6

@@ -22,10 +22,21 @@ macro_rules! exit {
 	TODO:
 		rewrite the lexer
 
+		add support for more than 6 argument function calls
+		fix returning not working properly in if statements
+		
+		make a DataTypeEnum instead of just constructing DataTypes from strings
+		make it so that ebx is only pushed at the start of a function when we actually use it
+
+		add some sort of constant expression handler, like calculating simple expressions like 5+5 at compile time
+		and inserting the result, instead of using registers and shit to actually calculate it at runtime
+
+		add escape character \" to strings
+		clean up the entire codebase , write comments everywhere and update outdated comments
+
 		add elseifs and else
 
 		add pointers
-		add support for more than 6 arguments
 		add arrays
 		add support for variadic functions
 

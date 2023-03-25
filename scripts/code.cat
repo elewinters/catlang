@@ -47,14 +47,6 @@ fn main(argc: i32) -> i32 {
 	let x = "Hello, world!";
 	puts(x);
 
-	asm!("
-		mov rax, 1
-		mov rdi, 1
-		mov rsi, L0
-		mov rdx, 2
-		syscall
-	");
-
 	let y = typeof!(x);
 	puts(y);
 
