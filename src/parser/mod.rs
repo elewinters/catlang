@@ -103,7 +103,6 @@ fn seperate_block_statement(iter: &mut core::slice::Iter<Token>, line: i64) -> B
 				else {
 					block_statement_tokens.push(i.clone());
 				}
-
 			},
 			_ => block_statement_tokens.push(i.clone())
 		}
@@ -284,8 +283,8 @@ pub fn parse(input: Vec<Token>) -> Result<Vec<AstType>, (String, i64)> {
 				let mut expr1: Expression = Vec::new();
 				let mut operator: Option<ComparisonOperator> = None;
 
-				while let Some(x) = iter.next() {
-					match x {
+				for i in iter.by_ref() {
+					match i {
 						/* == */
 						Operator(DoubleEqual) => {
 							operator = Some(ComparisonOperator::Equal);
@@ -316,7 +315,7 @@ pub fn parse(input: Vec<Token>) -> Result<Vec<AstType>, (String, i64)> {
 							operator = Some(ComparisonOperator::LessThanEqual);
 							break;
 						}
-						_ => expr1.push(x.clone())
+						_ => expr1.push(i.clone())
 					}
 				}
 
