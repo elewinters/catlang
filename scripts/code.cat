@@ -52,7 +52,7 @@ fn main(argc: i32) -> i32 {
 
 	syscall!(x - 1 + 1, x, "Hello, world!\n", 10 + 4);
 
-	let x = 5;
+	let x: i32 = 5;
 	x += 5;
 
 	printf("%d\n", x);
