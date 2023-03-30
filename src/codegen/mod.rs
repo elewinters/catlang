@@ -6,7 +6,8 @@ use registers::*;
 mod macros;
 
 use crate::parser::AstType::{self, *};
-use crate::lexer::TokenType::{self, *};
+use crate::lexer::Token::{self, *};
+use crate::lexer::Operator::*;
 
 use crate::parser::{process_function_parameters, Expression, ComparisonOperator};
 
@@ -129,13 +130,13 @@ fn eval_expression(state: &mut State, expr: &Expression, expected_type: &DataTyp
 	/* if you feed it the string literal "hello" it will return L0, L1, etc */
 	/* if you feed it 'strlen, (, "hi", )' it will return rax/eax */
 	/* if you feed it 'var' it will return its address on the stack (like [rbp-16]) */
-	fn eval_miniexpression(state: &mut State, iter: &mut core::slice::Iter<TokenType>, expected_type: &DataType) -> Result<String, (String, i64)> {
+	fn eval_miniexpression(state: &mut State, iter: &mut core::slice::Iter<Token>, expected_type: &DataType) -> Result<String, (String, i64)> {
 		Ok(match (iter.next(), iter.clone().peekable().peek()) {
-			(Some(IntLiteral(x)), _) => x.to_string(),
+			(Some(Numerical(x)), _) => x.to_string(),
 			(Some(StringLiteral(x)), _) => resolve_string_literal(&mut state.datasect, x),
 
 			/* function calls */
-			(Some(Identifier(name)), Some(Operator('('))) if !name.ends_with('!') => {
+			(Some(Identifier(name)), Some(Operator(LeftParen))) if !name.ends_with('!') => {
 				iter.next(); /* strip ( */
 				let args = process_function_parameters(iter);
 				
@@ -157,7 +158,7 @@ fn eval_expression(state: &mut State, expr: &Expression, expected_type: &DataTyp
 			}
 
 			/* macro calls */
-			(Some(Identifier(name)), Some(Operator('('))) if name.ends_with('!') => {
+			(Some(Identifier(name)), Some(Operator(LeftParen))) if name.ends_with('!') => {
 				iter.next(); /* strip ( */
 				let args = process_function_parameters(iter);
 				
@@ -212,16 +213,16 @@ fn eval_expression(state: &mut State, expr: &Expression, expected_type: &DataTyp
 	while let Some(i) = iter.next() {
 		let val = eval_miniexpression(state, &mut iter, expected_type)?;
 		match i {
-			Operator('+') => {
+			Operator(Plus) => {
 				state.textsect.push_str(&format!("\tadd {root_register}, {val}\n"));
 			},
-			Operator('-') => {
+			Operator(Dash) => {
 				state.textsect.push_str(&format!("\tsub {root_register}, {val}\n"));
 			}
-			Operator('*') => {
+			Operator(Star) => {
 				state.textsect.push_str(&format!("\timul {root_register}, {val}\n"));
 			}
-			Operator('/') => {
+			Operator(Slash) => {
 				let accumulator = get_accumulator(&expected_type.word);
 				let r11 = get_r11(&expected_type.word);
 
@@ -314,9 +315,9 @@ fn call_function(state: &mut State, name: &str, args: &Vec<Expression>) -> Resul
 fn infer_type(state: &mut State, expr: &Expression) -> Result<DataType, (String, i64)> {
 	let mut iter = expr.iter();
 	match iter.next() {
-		Some(TokenType::Identifier(identifier)) => {
+		Some(Identifier(identifier)) => {
 			/* function/macro calls */
-			if let Some(Operator('(')) = iter.next() {
+			if let Some(Operator(LeftParen)) = iter.next() {
 				/* return function return type */
 				if (!identifier.ends_with('!')) {
 					match state.functions.get(identifier) {
@@ -342,8 +343,8 @@ fn infer_type(state: &mut State, expr: &Expression) -> Result<DataType, (String,
 				}
 			}
 		}
-		Some(TokenType::IntLiteral(_)) => DataType::new("i32", state.line),
-		Some(TokenType::StringLiteral(_)) => DataType::new("i64", state.line),
+		Some(Numerical(_)) => DataType::new("i32", state.line),
+		Some(StringLiteral(_)) => DataType::new("i64", state.line),
 		
 		Some(err) => Err((format!("expected an identifier, int literal, or string literal as the first element of expression, but got {err} instead"), state.line)),
 		None => Err((String::from("expected an identifier, int literal, or string literal as the first element of expression, but got nothing"), state.line))

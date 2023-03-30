@@ -65,14 +65,18 @@ fn typeof_(state: &mut State, args: &[Expression]) -> Result<Option<String>, (St
 /*      asm!      */
 /* -------------- */
 fn parse_asm(state: &State, input: &str) -> Result<String, (String, i64)> {
-	let tokens = lexer::lex(input.as_bytes());
+	let tokens = match lexer::lex(input) {
+		Ok(x) => x,
+		Err(err) => return Err((err, state.line))
+	};
+
 	let mut iter = tokens.iter();
 
 	let mut output = String::new();
 
 	while let Some(i) = iter.next() {
 		match (i) {
-			Operator('{') => {
+			Operator(LeftCurly) => {
 				let identifier = match iter.next() {
 					Some(Identifier(x)) => x,
 					_ => return Err((String::from("expected identifier after operator '{' in asm! macro call"), state.line))
@@ -84,19 +88,21 @@ fn parse_asm(state: &State, input: &str) -> Result<String, (String, i64)> {
 				};
 
 				match iter.next() {
-					Some(Operator('}')) => (),
+					Some(Operator(RightCurly)) => (),
 					_ => return Err((format!("expected operator '}}' after identifier '{identifier}' in asm! macro call"), state.line))
 				}
 
 				output.push_str(&format!("{} ", variable.addr));
 			}
 
-			Keyword(x) | Identifier(x) | IntLiteral(x) => output.push_str(&format!("{x} ")),
-			Operator(',') => { output.pop(); output.push_str(", ") },
-			Operator(x) => output.push(*x),
+			Keyword(x) => output.push_str(&format!("{:?}", x).to_lowercase()),
+			
+			Identifier(x) | Numerical(x) => output.push_str(&format!("{x} ")),
+			Operator(Comma) => { output.pop(); output.push_str(", ") },
+			Operator(_) => todo!("operators in asm! macro"),
 
 			StringLiteral(_) => return Err((String::from("string literals are not allowed in the asm! macro"), state.line)),
-			TokenType::Newline => output.push_str("\n\t"),
+			Token::Newline => output.push_str("\n\t"),
 		}	
 	}
 

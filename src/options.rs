@@ -3,7 +3,7 @@ use std::env;
 
 #[derive(Debug, Default)]
 pub struct Options {
-	pub input: Vec<u8>,
+	pub input: String,
 	pub output_name: Option<String>,
 	pub create_binary: bool,
 	pub link_libc: bool,
@@ -56,7 +56,7 @@ pub fn get_options() -> Result<Options, String> {
 				return Err(String::from("more than one input file"));
 			}
 			
-			let input: Vec<u8> = match(fs::read(&i)) {
+			let input = match(fs::read_to_string(&i)) {
 				Ok(x) => x,
 				Err(err) => return Err(format!("input file '{}' cannot be read [{err}]", i))
 			};

@@ -7,7 +7,8 @@ section .data
 	L5: db `Hello, world!`, 0
 	L6: db `i64`, 0
 	L7: db `Hello, world!\n`, 0
-	L8: db `exiting...`, 0
+	L8: db `%d\n`, 0
+	L9: db `exiting...`, 0
 section .text
 
 extern puts
@@ -168,7 +169,15 @@ main:
 	mov rdx, rbx
 	syscall
 
+	mov dword [rbp-36], 5
+	mov ebx, [rbp-36]
+	add ebx, 5
+	mov dword [rbp-36], ebx
 	mov rdi, L8
+	mov esi, [rbp-36]
+	call printf
+
+	mov rdi, L9
 	call puts
 
 	mov eax, 0
