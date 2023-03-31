@@ -79,7 +79,7 @@ fn parse_asm(state: &State, input: &str) -> Result<String, (String, i64)> {
 			Operator(LeftCurly) => {
 				let identifier = match iter.next() {
 					Some(Identifier(x)) => x,
-					_ => return Err((String::from("expected identifier after operator '{' in asm! macro call"), state.line))
+					_ => return Err((String::from("expected identifier after '{' in asm! macro call"), state.line))
 				};
 				
 				let variable = match state.current_function.local_variables.get(identifier) {
@@ -89,7 +89,7 @@ fn parse_asm(state: &State, input: &str) -> Result<String, (String, i64)> {
 
 				match iter.next() {
 					Some(Operator(RightCurly)) => (),
-					_ => return Err((format!("expected operator '}}' after identifier '{identifier}' in asm! macro call"), state.line))
+					_ => return Err((format!("expected '}}' after identifier '{identifier}' in asm! macro call"), state.line))
 				}
 
 				output.push_str(&format!("{} ", variable.addr));
@@ -99,7 +99,7 @@ fn parse_asm(state: &State, input: &str) -> Result<String, (String, i64)> {
 			
 			Identifier(x) | Numerical(x) => output.push_str(&format!("{x} ")),
 			Operator(Comma) => { output.pop(); output.push_str(", ") },
-			Operator(_) => todo!("operators in asm! macro"),
+			Operator(x) => output.push_str(&x.to_string()),
 
 			StringLiteral(_) => return Err((String::from("string literals are not allowed in the asm! macro"), state.line)),
 			Token::Newline => output.push_str("\n\t"),

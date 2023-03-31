@@ -1,5 +1,6 @@
 #![allow(unused_parens)]
 use std::fmt::{self, Display};
+use Operator::*;
 
 #[derive(Debug, Clone)]
 pub enum Token {
@@ -68,28 +69,70 @@ enum LexerMode {
 impl Operator {
 	fn new(input: &str) -> Option<Operator> {
 		match input {
-			"*" => Some(Operator::Star),
-			"/" => Some(Operator::Slash),
-			"+" => Some(Operator::Plus),
-			"-" => Some(Operator::Dash),
+			"*" => Some(Star),
+			"/" => Some(Slash),
+			"+" => Some(Plus),
+			"-" => Some(Dash),
 			
-			"=" => Some(Operator::Equal),
-			":" => Some(Operator::Colon),
-			";" => Some(Operator::Semicolon),
-			"!" => Some(Operator::Bang),
-			"," => Some(Operator::Comma),
+			"=" => Some(Equal),
+			":" => Some(Colon),
+			";" => Some(Semicolon),
+			"!" => Some(Bang),
+			"," => Some(Comma),
 
-			"(" => Some(Operator::LeftParen),
-			")" => Some(Operator::RightParen),
+			"(" => Some(LeftParen),
+			")" => Some(RightParen),
 
-			"{" => Some(Operator::LeftCurly),
-			"}" => Some(Operator::RightCurly),
+			"{" => Some(LeftCurly),
+			"}" => Some(RightCurly),
 
-			"<" => Some(Operator::LeftAngle),
-			">" => Some(Operator::RightAngle),
+			"<" => Some(LeftAngle),
+			">" => Some(RightAngle),
 
 			_ => None,
 		}
+	}
+}
+
+impl Display for Operator {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		let x = match self {
+			Star => "*",
+			Slash => "/",
+			Plus => "+",
+			Dash => "-",
+
+			Equal => "=",
+
+			Colon => ":",
+			Semicolon => ";",
+			Comma => ",",
+			Bang => "!",
+
+			LeftParen => "(",
+			RightParen => ")",
+
+			LeftCurly => "{",
+			RightCurly => "}",
+
+			LeftAngle => "<",
+			RightAngle => ">",
+
+			Arrow => "->",
+
+			StarEqual => "*=",
+			SlashEqual => "/=",
+			PlusEqual => "+=",
+			DashEqual => "-=",
+
+			DoubleEqual => "==",
+			BangEqual => "!=",
+
+			LeftAngleEqual => "<=",
+			RightAngleEqual => ">="
+		};
+
+		write!(f, "{}", x)
 	}
 }
 
@@ -115,7 +158,7 @@ impl Display for Token {
 			Token::StringLiteral(x) => write!(f, "string literal '{x}'"),
 			Token::Numerical(x) => write!(f, "int literal '{x}'"),
 
-			Token::Operator(x) => write!(f, "operator '{:?}'", x),
+			Token::Operator(x) => write!(f, "operator '{x}'"),
 			Token::Newline => write!(f, "newline")
 		}
 	}
@@ -125,11 +168,11 @@ pub fn print_tokens(input: &Vec<Token>) {
 	for i in input {
 		match (i) {
 			Token::Keyword(x) => print!("Keyword[{:?}], ", x),
-			Token::Identifier(x) => print!("Identifier[{}], ", x),
-			Token::StringLiteral(x) => print!("StringLiteral[\"{}\"], ", x),
-			Token::Numerical(x) => print!("Numerical[{}], ", x),
+			Token::Identifier(x) => print!("Identifier[{x}], "),
+			Token::StringLiteral(x) => print!("StringLiteral[\"{x}\"], "),
+			Token::Numerical(x) => print!("Numerical[{x}], "),
 
-			Token::Operator(x) => print!("Operator[{:?}], ", x),
+			Token::Operator(x) => print!("Operator[{x}], "),
 
 			Token::Newline => println!("Newline")
 		}
@@ -145,48 +188,48 @@ fn join_tokens(tokens: &mut Vec<Token>) {
 	while (i+1 < tokens.len()) {
 		match (&tokens[i], &tokens[i+1]) {
 			/* combine - and > into -> */
-			(Token::Operator(Operator::Dash), Token::Operator(Operator::RightAngle)) => {
-				tokens[i] = Token::Operator(Operator::Arrow);
+			(Token::Operator(Dash), Token::Operator(RightAngle)) => {
+				tokens[i] = Token::Operator(Arrow);
 				tokens.remove(i+1);
 			}
 			/* combine = and = into == */
-			(Token::Operator(Operator::Equal), Token::Operator(Operator::Equal)) => {
-				tokens[i] = Token::Operator(Operator::DoubleEqual);
+			(Token::Operator(Equal), Token::Operator(Equal)) => {
+				tokens[i] = Token::Operator(DoubleEqual);
 				tokens.remove(i+1);
 			}
 			/* combine ! and = into != */
-			(Token::Operator(Operator::Bang), Token::Operator(Operator::Equal)) => {
-				tokens[i] = Token::Operator(Operator::BangEqual);
+			(Token::Operator(Bang), Token::Operator(Equal)) => {
+				tokens[i] = Token::Operator(BangEqual);
 				tokens.remove(i+1);
 			}
 			/* combine < and = into <= */
-			(Token::Operator(Operator::LeftAngle), Token::Operator(Operator::Equal)) => {
-				tokens[i] = Token::Operator(Operator::LeftAngleEqual);
+			(Token::Operator(LeftAngle), Token::Operator(Equal)) => {
+				tokens[i] = Token::Operator(LeftAngleEqual);
 				tokens.remove(i+1);
 			}
 			/* combine > and = into >= */
-			(Token::Operator(Operator::RightAngle), Token::Operator(Operator::Equal)) => {
-				tokens[i] = Token::Operator(Operator::RightAngleEqual);
+			(Token::Operator(RightAngle), Token::Operator(Equal)) => {
+				tokens[i] = Token::Operator(RightAngleEqual);
 				tokens.remove(i+1);
 			}
 			/* combine * and = into *= */
-			(Token::Operator(Operator::Star), Token::Operator(Operator::Equal)) => {
-				tokens[i] = Token::Operator(Operator::StarEqual);
+			(Token::Operator(Star), Token::Operator(Equal)) => {
+				tokens[i] = Token::Operator(StarEqual);
 				tokens.remove(i+1);
 			}
 			/* combine / and = into /= */
-			(Token::Operator(Operator::Slash), Token::Operator(Operator::Equal)) => {
-				tokens[i] = Token::Operator(Operator::SlashEqual);
+			(Token::Operator(Slash), Token::Operator(Equal)) => {
+				tokens[i] = Token::Operator(SlashEqual);
 				tokens.remove(i+1);
 			}
 			/* combine + and = into += */
-			(Token::Operator(Operator::Plus), Token::Operator(Operator::Equal)) => {
-				tokens[i] = Token::Operator(Operator::PlusEqual);
+			(Token::Operator(Plus), Token::Operator(Equal)) => {
+				tokens[i] = Token::Operator(PlusEqual);
 				tokens.remove(i+1);
 			}
 			/* combine - and = into -= */
-			(Token::Operator(Operator::Dash), Token::Operator(Operator::Equal)) => {
-				tokens[i] = Token::Operator(Operator::DashEqual);
+			(Token::Operator(Dash), Token::Operator(Equal)) => {
+				tokens[i] = Token::Operator(DashEqual);
 				tokens.remove(i+1);
 			}
 			_ => ()

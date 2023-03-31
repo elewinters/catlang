@@ -191,7 +191,7 @@ pub fn parse(input: Vec<Token>) -> Result<Vec<AstType>, (String, i64)> {
 				/* check for ( */
 				match iter.next() {
 					Some(Operator(LeftParen)) => (),
-					_ => return Err((format!("in function definition of {function_name}, expected ( after the function name"), line))
+					_ => return Err((format!("in function definition of {function_name}, expected '(' after the function name"), line))
 				}
 
 				/* add function arguments if they exist */
@@ -203,7 +203,7 @@ pub fn parse(input: Vec<Token>) -> Result<Vec<AstType>, (String, i64)> {
 						Identifier(varname) => {
 							match iter.next() {
 								Some(Operator(Colon)) => (),
-								_ => return Err((format!("expected an operator ',' after function paramater '{varname}'"), line)) 
+								_ => return Err((format!("expected ',' after function paramater '{varname}'"), line)) 
 							}
 
 							arg_names.push(varname.to_owned()); 
@@ -217,12 +217,12 @@ pub fn parse(input: Vec<Token>) -> Result<Vec<AstType>, (String, i64)> {
 								Some(Operator(RightParen)) => break,
 
 								Some(Operator(LeftCurly)) => return Err((format!("unexpected opening curly brace '{{' in paramater list of function definition of {function_name}, did you forget to close the parentheses of the argument list?"), line)),
-								_ => return Err((format!("expected a comma after paramater '{varname}'"), line))
+								_ => return Err((format!("expected a ',' after paramater '{varname}'"), line))
 							}
 						}
 
 						Operator(RightParen) => break,
-						err => return Err((format!("expected either an operator RightParen, operator '{{' or identifier in function definition of '{function_name}', but got {err} instead"), line))
+						err => return Err((format!("expected ')', '{{' or identifier in function definition of '{function_name}', but got {err} instead"), line))
 					}
 				}
 
@@ -244,12 +244,12 @@ pub fn parse(input: Vec<Token>) -> Result<Vec<AstType>, (String, i64)> {
 							Some(Operator(Semicolon)) | Some(Newline) => is_proto = true,
 
 							/* unwrap will never panic here */
-							_ => return Err((format!("expected '{{' after '-> {}', or a Semicolon/newline if this is a function prototype", return_type.unwrap()), line))
+							_ => return Err((format!("expected '{{' after '-> {}', or a ';'/newline if this is a function prototype", return_type.unwrap()), line))
 						}
 					}
 					Some(Operator(LeftCurly)) => (),
 					Some(Operator(Semicolon)) | Some(Newline) => is_proto = true,
-					_ => return Err((format!("expected either '{{', '->', Semicolon or a newline after the paramater list of '{function_name}'"), line))
+					_ => return Err((format!("expected either '{{', '->', ';' or a newline after the paramater list of '{function_name}'"), line))
 				}
 
 				if (is_proto) {
@@ -277,7 +277,7 @@ pub fn parse(input: Vec<Token>) -> Result<Vec<AstType>, (String, i64)> {
 			Keyword(Keyword::If) => {
 				match iter.next() {
 					Some(Operator(LeftParen)) => (),
-					_ => return Err((String::from("expected LeftParen after if keyword"), line))
+					_ => return Err((String::from("expected '(' after if keyword"), line))
 				};
 
 				let mut expr1: Expression = Vec::new();
@@ -331,8 +331,8 @@ pub fn parse(input: Vec<Token>) -> Result<Vec<AstType>, (String, i64)> {
 				match expr2.last() {
 					Some(Operator(RightParen)) => expr2.pop(),
 
-					Some(x) => return Err((format!("expected RightParen before '{{' in if statement, but got {x}"), line)),
-					_ => return Err((String::from("expected RightParen before '{{' in if statement"), line))
+					Some(x) => return Err((format!("expected ')' before '{{' in if statement, but got {x}"), line)),
+					_ => return Err((String::from("expected ')' before '{{' in if statement"), line))
 				};
 
 				ast.push(AstType::IfStatement(expr1, operator, expr2, block_statement));
@@ -357,13 +357,13 @@ pub fn parse(input: Vec<Token>) -> Result<Vec<AstType>, (String, i64)> {
 
 						continue;
 					}
-					_ => return Err(("expected operator ',' or operator Equal after the variable name".to_owned(), line))
+					_ => return Err(("expected ':' or '=' after the variable name".to_owned(), line))
 				};
 				
 				/* get variable type */
 				let variable_type = match iter.next() {
 					Some(Identifier(x)) => x,
-					_ => return Err(("expected identifier after operator ',".to_owned(), line))
+					_ => return Err(("expected identifier after ','".to_owned(), line))
 				};
 
 				/* check if there's a = after the type name */
@@ -373,7 +373,7 @@ pub fn parse(input: Vec<Token>) -> Result<Vec<AstType>, (String, i64)> {
 						ast.push(AstType::VariableDefinition(variable_name.to_owned(), Some(variable_type.to_owned()), None));
 						continue;
 					}
-					_ => return Err(("expected operator '=', operator ';' or newline after type name".to_owned(), line))
+					_ => return Err(("expected '=', ';' or newline after type name".to_owned(), line))
 				};
 
 				/* get initializer value */
@@ -409,7 +409,8 @@ pub fn parse(input: Vec<Token>) -> Result<Vec<AstType>, (String, i64)> {
 							SlashEqual => Slash,
 							PlusEqual => Plus,
 							DashEqual => Dash,
-							err => return Err((format!("expected either *=, /=, += or -= after identifier, but got '{:?}'", err), line))
+
+							err => return Err((format!("expected either '*=', '/=', '+=' or '-=' after identifier, but got '{err}'"), line))
 						};
 
 						let mut expr = seperate_expression(&mut iter, &Semicolon);
@@ -420,8 +421,8 @@ pub fn parse(input: Vec<Token>) -> Result<Vec<AstType>, (String, i64)> {
 
 						ast.push(AstType::VariableAssigment(identifier.to_owned(), expr));
 					}
-					Some(x) => return Err((format!("expected either operator LeftParen or operator Equal after identifier {identifier} but got '{x}'"), line)),
-					None => return Err((format!("expected either operator LeftParen or operator Equal after identifier {identifier}, but got nothing"), line))
+					Some(x) => return Err((format!("expected either '(', '*=', '/=', '+=', '-=', or '=' after identifier {identifier} but got '{x}'"), line)),
+					None => return Err((format!("expected either '(', '*=', '/=', '+=', '-=', or '=' after identifier {identifier} but got nothing"), line))
 				}
 			}
 			Operator(Semicolon) => (),
