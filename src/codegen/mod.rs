@@ -39,12 +39,15 @@ struct Function {
 /* this will always be mutable, and there will always only be one instance of it */
 #[derive(Clone)]
 struct CurrentFunctionState {
+	name: String,
+
 	local_variables: HashMap<String, Variable>,
 	return_type: Option<DataType>,
 	stacksize: i32,
 	stackspace: i32,
 
 	calls_funcs: bool,
+	returns: bool,
 }
 
 /* contains all of the state that this module needs to preserve */
@@ -84,6 +87,7 @@ impl DataType {
 impl Default for CurrentFunctionState {
 	fn default() -> Self {
 		Self {
+			name: String::new(),
 			local_variables: HashMap::new(),
 			return_type: None,
 			
@@ -94,7 +98,8 @@ impl Default for CurrentFunctionState {
 			stacksize: 8,
 			stackspace: 0,
 
-			calls_funcs: false
+			calls_funcs: false,
+			returns: false,
 		}
 	}
 }
@@ -383,9 +388,14 @@ pub fn generate(state: &mut State, input: &[AstType]) -> Result<(), (String, i64
 				
 				state.functions.insert(name.to_string(), Function { arg_types: args.1.to_vec(), return_type: return_type.clone() });
 				state.current_function.return_type = return_type;
+				state.current_function.name = name.clone();
 
 				/* parse and append the body of the funnction */
 				generate(state, body)?;
+
+				if (state.current_function.returns) {
+					state.textsect.push_str(&format!("\n.ret_{}:", state.current_function.name));
+				}
 
 				/* we want to subtract the value of stackspace + 8 (+8 because of rbx) from rsp if we call other functions */
 				/* and if the aren't any local variables/arguments in the current function */
@@ -443,6 +453,9 @@ pub fn generate(state: &mut State, input: &[AstType]) -> Result<(), (String, i64
 				if (accumulator != return_value) {
 					state.textsect.push_str(&format!("\tmov {accumulator}, {return_value}\n"));
 				}
+
+				state.textsect.push_str(&format!("\tjmp .ret_{}\n", state.current_function.name));
+				state.current_function.returns = true;
 			}
 			/* ----------------------- */
 			/*      if statements      */

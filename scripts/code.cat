@@ -30,33 +30,14 @@ fn sqr(x: i32) -> i32 {
 }
 
 fn main(argc: i32) -> i32 {
-	if (argc == 1) {
-		puts("not enough arguments");
-		exit(1);
-	}
-
 	let ret = strcmp("hi", "hi");
 	if (ret == 0) {
-		puts("condition is true");
+		return 0;
 	}
 
 	if (ret != 0) {
-		puts("condition is false");
+		return 1;
 	}
 
-	let x = "Hello, world!";
-	puts(x);
-
-	let y = typeof!(x);
-	puts(y);
-
-	syscall!(x - 1 + 1, x, "Hello, world!\n", 10 + 4);
-
-	let x: i32 = 5;
-	x += 5;
-
-	printf("%d\n", x);
-
-	puts("exiting...");
 	return 0;
 }

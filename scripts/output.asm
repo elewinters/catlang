@@ -1,14 +1,6 @@
 section .data
-	L0: db `not enough arguments`, 0
+	L0: db `hi`, 0
 	L1: db `hi`, 0
-	L2: db `hi`, 0
-	L3: db `condition is true`, 0
-	L4: db `condition is false`, 0
-	L5: db `Hello, world!`, 0
-	L6: db `i64`, 0
-	L7: db `Hello, world!\n`, 0
-	L8: db `%d\n`, 0
-	L9: db `exiting...`, 0
 section .text
 
 extern puts
@@ -77,7 +69,9 @@ div:
 	mov ebx, eax
 
 	mov eax, ebx
+	jmp .ret_div
 
+.ret_div:
 	pop rbx
 	pop rbp
 	ret
@@ -93,7 +87,9 @@ sum:
 	mov ebx, [rbp-12]
 	add ebx, [rbp-16]
 	mov eax, ebx
+	jmp .ret_sum
 
+.ret_sum:
 	pop rbx
 	pop rbp
 	ret
@@ -108,7 +104,9 @@ sqr:
 	mov ebx, [rbp-12]
 	imul ebx, [rbp-12]
 	mov eax, ebx
+	jmp .ret_sqr
 
+.ret_sqr:
 	pop rbx
 	pop rbp
 	ret
@@ -118,70 +116,30 @@ main:
 	push rbp
 	mov rbp, rsp
 	push rbx
-	sub rsp, 40
+	sub rsp, 24
 
 	mov dword [rbp-12], edi
-	mov eax, dword [rbp-12]
-	cmp eax, 1
-	jne .L1
 	mov rdi, L0
-	call puts
-
-	mov edi, 1
-	call exit
-
-.L1:
-	mov rdi, L1
-	mov rsi, L2
+	mov rsi, L1
 	call strcmp
 
 	mov dword [rbp-16], eax
 	mov eax, dword [rbp-16]
 	cmp eax, 0
-	jne .L2
-	mov rdi, L3
-	call puts
-
-.L2:
+	jne .L1
+	mov eax, 0
+	jmp .ret_main
+.L1:
 	mov eax, dword [rbp-16]
 	cmp eax, 0
-	je .L3
-	mov rdi, L4
-	call puts
-
-.L3:
-	mov qword [rbp-24], L5
-	mov rdi, [rbp-24]
-	call puts
-
-	mov qword [rbp-32], L6
-	mov rdi, [rbp-32]
-	call puts
-
-	mov rbx, [rbp-24]
-	sub rbx, 1
-	add rbx, 1
-	mov rax, rbx
-	mov rdi, [rbp-24]
-	mov rsi, L7
-	mov rbx, 10
-	add rbx, 4
-	mov rdx, rbx
-	syscall
-
-	mov dword [rbp-36], 5
-	mov ebx, [rbp-36]
-	add ebx, 5
-	mov dword [rbp-36], ebx
-	mov rdi, L8
-	mov esi, [rbp-36]
-	call printf
-
-	mov rdi, L9
-	call puts
-
+	je .L2
+	mov eax, 1
+	jmp .ret_main
+.L2:
 	mov eax, 0
+	jmp .ret_main
 
+.ret_main:
 	pop rbx
 	leave
 	ret
