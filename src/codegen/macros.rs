@@ -62,7 +62,6 @@ fn parse_asm(state: &State, input: &str) -> Result<String, (String, i64)> {
 	};
 
 	let mut iter = tokens.iter();
-
 	let mut output = String::new();
 
 	while let Some(i) = iter.next() {
