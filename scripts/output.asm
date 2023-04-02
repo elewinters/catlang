@@ -1,6 +1,7 @@
 section .data
 	L0: db `hi`, 0
 	L1: db `hi`, 0
+	L2: db `i32`, 0
 section .text
 
 extern puts
@@ -124,18 +125,10 @@ main:
 	call strcmp
 
 	mov dword [rbp-16], eax
-	mov eax, dword [rbp-16]
-	cmp eax, 0
-	jne .L1
-	mov eax, 0
-	jmp .ret_main
-.L1:
-	mov eax, dword [rbp-16]
-	cmp eax, 0
-	je .L2
-	mov eax, 1
-	jmp .ret_main
-.L2:
+	mov qword [rbp-24], L2
+	mov rdi, [rbp-24]
+	call puts
+
 	mov eax, 0
 	jmp .ret_main
 

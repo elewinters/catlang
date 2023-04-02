@@ -8,31 +8,22 @@ pub struct Macro {
 	pub function: MacroDefinition 
 }
 
-const MACROS: [(&str, Macro); 3] = [
-	("asm!", Macro {
-		return_type: None,
-		function: asm
-	}),
-
-	("syscall!", Macro {
-		return_type: Some("i64"),
-		function: syscall
-	}),
-
-	("typeof!", Macro {
-		return_type: Some("i64"), 
-		function: typeof_}
-	)
-];
-
 pub fn get_macro(state: &State, macro_name: &str) -> Result<Macro, (String, i64)> {
-	for (name, macro_obj) in MACROS {
-		if (name == macro_name) {
-			return Ok(macro_obj);
-		}
-	}
-
-	Err((format!("macro '{}' does not exist", macro_name), state.line))
+	Ok(match macro_name {
+		"asm!" => Macro {
+			return_type: None,
+			function: asm
+		},
+		"syscall!" => Macro {
+			return_type: Some("i64"),
+			function: syscall
+		},
+		"typeof!" => Macro {
+			return_type: Some("i64"),
+			function: typeof_
+		},
+		_ => return Err((format!("macro '{}' does not exist", macro_name), state.line))
+	})
 }
 
 pub fn call_macro(state: &mut State, macro_name: &str, args: &[Expression]) -> Result<Option<String>, (String, i64)> {

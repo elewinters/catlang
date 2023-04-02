@@ -31,13 +31,9 @@ fn sqr(x: i32) -> i32 {
 
 fn main(argc: i32) -> i32 {
 	let ret = strcmp("hi", "hi");
-	if (ret == 0) {
-		return 0;
-	}
 
-	if (ret != 0) {
-		return 1;
-	}
+	let ret = typeof!(ret);
+	puts(ret);
 
 	return 0;
 }
