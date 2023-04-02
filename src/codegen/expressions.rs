@@ -60,7 +60,7 @@ pub fn eval_expression(state: &mut State, expr: &Expression, expected_type: &Dat
 			(Some(Identifier(x)), _) => {
 				/* we move the variable to a temporary register and then pass that into add_variable */
 				/* we have to use a temp register because we can't mov a memory location to another memory location obv */
-				let var = match state.current_function.local_variables.get(x) {
+				let var = match state.function.local_variables.get(x) {
 					Some(x) => x,
 					None => return Err((format!("variable '{x}' is not defined in the current scope"), state.line))
 				};
@@ -152,7 +152,7 @@ pub fn infer_type(state: &mut State, expr: &Expression) -> Result<DataType, (Str
 			}
 			/* variables */
 			else {
-				match state.current_function.local_variables.get(identifier) {
+				match state.function.local_variables.get(identifier) {
 					Some(x) => Ok(x.vartype.clone()),
 					None => Err((format!("attempted to use variable '{identifier}' in expression but it is not defined in the current scope"), state.line))
 				}

@@ -49,7 +49,7 @@ fn typeof_(state: &mut State, args: &[Expression]) -> Result<Option<String>, (St
 	}
 
 	let variable = match &args[0][0] {
-		Identifier(x) => match state.current_function.local_variables.get(x) {
+		Identifier(x) => match state.function.local_variables.get(x) {
 			Some(x) => x,
 			None => return Err((format!("variable '{x}' is not defined in the current scope in call to typeof! macro"), state.line))
 		}
@@ -82,7 +82,7 @@ fn parse_asm(state: &State, input: &str) -> Result<String, (String, i64)> {
 					_ => return Err((String::from("expected identifier after '{' in asm! macro call"), state.line))
 				};
 				
-				let variable = match state.current_function.local_variables.get(identifier) {
+				let variable = match state.function.local_variables.get(identifier) {
 					Some(x) => x,
 					None => return Err((format!("undeclared variable '{identifier}' in asm! macro call"), state.line))
 				};

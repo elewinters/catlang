@@ -65,7 +65,7 @@ pub struct State {
 	pub textsect: String,
 
 	functions: HashMap<String, Function>,
-	current_function: CurrentFunctionState,
+	function: CurrentFunctionState,
 
 	labels: i64,
 }
@@ -128,18 +128,18 @@ fn resolve_string_literal(datasect: &mut String, literal: &str) -> String {
 
 /* adds a variable to the local_variables hashmap */
 fn add_variable(state: &mut State, name: &str, vartype: &DataType, initval: Option<&str>) -> Result<(), (String, i64)> {
-	state.current_function.stacksize += vartype.byte_size;
+	state.function.stacksize += vartype.byte_size;
 	
-	if (state.current_function.stacksize > state.current_function.stackspace + 8) {
-		state.current_function.stackspace += 16
+	if (state.function.stacksize > state.function.stackspace + 8) {
+		state.function.stackspace += 16
 	}
 
-	let addr = format!("[rbp-{}]", state.current_function.stacksize);
+	let addr = format!("[rbp-{}]", state.function.stacksize);
 	if let Some(initval) = initval {
 		state.textsect.push_str(&format!("\tmov {} {addr}, {initval}\n", vartype.word));
 	}
 
-	state.current_function.local_variables.insert(name.to_string(), Variable {
+	state.function.local_variables.insert(name.to_string(), Variable {
 		addr, 
 		vartype: vartype.clone()
 	});
@@ -188,7 +188,7 @@ fn call_function(state: &mut State, name: &str, args: &Vec<Expression>) -> Resul
 	}
 
 	state.textsect.push_str(&format!("\tcall {name}\n\n"));
-	state.current_function.calls_funcs = true;
+	state.function.calls_funcs = true;
 
 	Ok(())
 }
@@ -224,22 +224,22 @@ pub fn generate(state: &mut State, input: &[AstType]) -> Result<(), (String, i64
 				};
 				
 				state.functions.insert(name.to_string(), Function { arg_types: args.1.to_vec(), return_type: return_type.clone() });
-				state.current_function.return_type = return_type;
-				state.current_function.name = name.clone();
+				state.function.return_type = return_type;
+				state.function.name = name.clone();
 
 				/* parse and append the body of the funnction */
 				generate(state, body)?;
 
-				if (state.current_function.returns) {
-					state.textsect.push_str(&format!("\n.ret_{}:", state.current_function.name));
+				if (state.function.returns) {
+					state.textsect.push_str(&format!("\n.ret_{}:", state.function.name));
 				}
 
 				/* we want to subtract the value of stackspace + 8 (+8 because of rbx) from rsp if we call other functions */
 				/* and if the aren't any local variables/arguments in the current function */
-				if (state.current_function.calls_funcs && state.current_function.stacksize != 0) {
+				if (state.function.calls_funcs && state.function.stacksize != 0) {
 					state.textsect.push_str("\n\tpop rbx\n");
 
-					state.textsect.insert_str(stack_subtraction_index, &format!("\tsub rsp, {}\n", state.current_function.stackspace + 8));
+					state.textsect.insert_str(stack_subtraction_index, &format!("\tsub rsp, {}\n", state.function.stackspace + 8));
 					state.textsect.insert_str(stack_subtraction_index, "\tpush rbx\n");
 
 					state.textsect.push_str("\tleave\n");
@@ -252,7 +252,7 @@ pub fn generate(state: &mut State, input: &[AstType]) -> Result<(), (String, i64
 				}
 				
 				state.textsect.push_str("\tret\n\n");
-				state.current_function = CurrentFunctionState::default();
+				state.function = CurrentFunctionState::default();
 			},
 			/* --------------------------- */
 			/*     function prototypes     */
@@ -277,7 +277,7 @@ pub fn generate(state: &mut State, input: &[AstType]) -> Result<(), (String, i64
 			/*    function returning    */
 			/* ------------------------ */
 			ReturnStatement(expr) => {
-				let return_type = match state.current_function.return_type {
+				let return_type = match state.function.return_type {
 					Some(ref x) => x.clone(),
 					None => return Err((String::from("attempted to return from function that does not return anything, did you forget to specify the return type in the signature?"), state.line))
 				};
@@ -291,8 +291,8 @@ pub fn generate(state: &mut State, input: &[AstType]) -> Result<(), (String, i64
 					state.textsect.push_str(&format!("\tmov {accumulator}, {return_value}\n"));
 				}
 
-				state.textsect.push_str(&format!("\tjmp .ret_{}\n", state.current_function.name));
-				state.current_function.returns = true;
+				state.textsect.push_str(&format!("\tjmp .ret_{}\n", state.function.name));
+				state.function.returns = true;
 			}
 			/* ----------------------- */
 			/*      if statements      */
@@ -351,7 +351,7 @@ pub fn generate(state: &mut State, input: &[AstType]) -> Result<(), (String, i64
 			/*    variable assignment   */ 
 			/* -------------------------*/ 
 			VariableAssigment(name, expr) => {
-				let variable = match state.current_function.local_variables.get(name).cloned() {
+				let variable = match state.function.local_variables.get(name).cloned() {
 					Some(x) => x,
 					None => return Err((format!("attempted to assign a value to variable '{name}', but it is not defined in the current scope"), state.line))
 				};
