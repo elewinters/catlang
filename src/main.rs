@@ -22,9 +22,6 @@ macro_rules! exit {
 	TODO:
 		rewrite the lexer
 
-		add support for more than 6 argument function calls
-		fix returning not working properly in if statements
-		
 		make a DataTypeEnum instead of just constructing DataTypes from strings
 		make it so that ebx is only pushed at the start of a function when we actually use it
 

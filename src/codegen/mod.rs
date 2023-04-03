@@ -171,14 +171,27 @@ fn call_function(state: &mut State, name: &str, args: &Vec<Expression>) -> Resul
 	/* like in an expression like this [sum(100, sum(50, 50))] */
 	/* without this queue passing all of the arguments to their registers would get totally messed up */
 	let mut args_queue: Vec<(&'static str, String)> = Vec::new();
+	/* this is for when the function we're calling has more than 6 arguments, and we need to push shit */
+	let mut stack_offset = 0;
 
 	/* insert arguments to the queue */
-	for (i, v) in args.iter().enumerate() {
+	for (i, v) in args.iter().enumerate().rev() {
 		let expr_evaluation = eval_expression(state, v, &DataType::new(&function.arg_types[i], state.line)?)?;
-
 		let argtype = DataType::new(&function.arg_types[i], state.line)?;
-		let register = get_register(i, &argtype.word, state.line)?;
 
+		if (i >= 6) {
+			stack_offset += 8;
+
+			let accumulator = get_accumulator(&argtype.word);
+			if (expr_evaluation != accumulator) {
+				state.textsect.push_str(&format!("\tmov {accumulator}, {expr_evaluation}\n"));
+			}
+
+			state.textsect.push_str(&format!("\tpush rax\n"));
+			continue;
+		}
+
+		let register = get_register(i, &argtype.word);
 		args_queue.push((register, expr_evaluation));
 	}
 
@@ -188,6 +201,10 @@ fn call_function(state: &mut State, name: &str, args: &Vec<Expression>) -> Resul
 	}
 
 	state.textsect.push_str(&format!("\tcall {name}\n\n"));
+	if (stack_offset > 0) {
+		state.textsect.push_str(&format!("\tadd rsp, {stack_offset}\n"));
+	}
+
 	state.function.calls_funcs = true;
 
 	Ok(())
@@ -211,10 +228,21 @@ pub fn generate(state: &mut State, input: &[AstType]) -> Result<(), (String, i64
 				let stack_subtraction_index = state.textsect.len() - 1;
 
 				/* add arguments to the stack */
+				let mut stack_offset = 16;
 				for i in 0..args.0.len() {
 					let datatype = DataType::new(&args.1[i], state.line)?;
-					let register = get_register(i, &datatype.word, state.line)?;
 
+					if (i >= 6) {
+						let accumulator = get_accumulator(&datatype.word);
+						state.textsect.push_str(&format!("\tmov {accumulator}, {} [rbp+{stack_offset}]\n", datatype.word));
+
+						add_variable(state, &args.0[i], &datatype, Some(&accumulator))?;
+
+						stack_offset += 8;
+						continue;
+					}
+
+					let register = get_register(i, &datatype.word);
 					add_variable(state, &args.0[i], &datatype, Some(register))?;
 				}
 
